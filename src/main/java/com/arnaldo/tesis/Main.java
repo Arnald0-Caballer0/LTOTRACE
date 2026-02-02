@@ -18,7 +18,7 @@ public class Main {
         instance.setLanguage("spa");
 
         try {
-            // 4. Intentamos leer una imagen (Crea una imagen llamada 'prueba.png' en la carpeta raíz)
+            // 4. Intentamos leer una imagen
             File imageFile = new File("prueba.png");
             String result = instance.doOCR(imageFile);
 
