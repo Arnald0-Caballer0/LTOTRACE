@@ -1,35 +1,35 @@
 package com.arnaldo.tesis;
 
-import net.sourceforge.tess4j.ITesseract;
-import net.sourceforge.tess4j.Tesseract;
-import net.sourceforge.tess4j.TesseractException;
-import java.io.File;
+import com.ibm.as400.access.AS400;
 
 public class Main {
     public static void main(String[] args) {
-        // 1. Creamos la instancia de Tesseract
-        ITesseract instance = new Tesseract();
+        System.out.println("--- PRUEBA DE INFRAESTRUCTURA ---");
+        DatabaseConnection.getConnection();
 
-        // 2. IMPORTANTE: Apuntamos a la carpeta 'tessdata' dentro de tu instalación
-        // Usamos doble barra \\ para que Windows no se confunda
-        instance.setDatapath("C:\\Program Files\\Tesseract-OCR\\tessdata");
-
-        // 3. Configuramos el idioma (spa = español)
-        instance.setLanguage("spa");
+        System.out.println("\n--- CONECTANDO AL SERVIDOR POWER ---");
+        AS400 system = IbmIConnection.getSystem();
 
         try {
-            // 4. Intentamos leer una imagen
-            File imageFile = new File("prueba.png");
-            String result = instance.doOCR(imageFile);
+            String barcodePrueba = "ABC001";
+            String unidadTape = "TAP07";
 
-            System.out.println("--- TEXTO EXTRAÍDO ---");
-            System.out.println(result);
-            System.out.println("-----------------------");
+            TapeService tapeService = new TapeService();
+            CintaDAO cintaDAO = new CintaDAO();
 
-        } catch (TesseractException e) {
-            System.err.println("Error al procesar el OCR: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Asegúrate de que el archivo 'prueba.png' exista.");
+            System.out.println("Iniciando proceso de Relacionar Nombre...");
+
+            // Llamamos al nuevo método pasando el objeto 'system'
+            String nombreEncontrado = tapeService.obtenerVolumeIdDesdeIbmI(system, unidadTape);
+
+            if (nombreEncontrado != null) {
+                System.out.println("ℹIBM i confirmó físicamente que la cinta es: " + nombreEncontrado);
+                cintaDAO.actualizarVolumeId(barcodePrueba, nombreEncontrado);
+            } else {
+                System.err.println("No se pudo extraer el nombre de los mensajes del sistema.");
+            }
+        } finally {
+            IbmIConnection.disconnect();
         }
     }
 }
