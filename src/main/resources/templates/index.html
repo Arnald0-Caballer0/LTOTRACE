@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>ATOPA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --sidebar-bg: #fdfdfd;
+            --tape-dark: #1a1c1e; /* Color más profundo para el lomo */
+            --card-bg: #fbfcfd;   /* Color estético sutil para el fondo de la tarjeta */
+            --navbar-h: 56px;
+        }
+
+        body, html { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif; background-color: #f4f7f9; }
+
+        .navbar-custom { z-index: 1200; height: var(--navbar-h); }
+
+        .sidebar {
+            height: calc(100vh - var(--navbar-h));
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid #e3e8ed;
+            position: fixed;
+            width: 22%;
+            top: var(--navbar-h);
+            z-index: 1100;
+        }
+
+        .main-wrapper {
+            margin-left: 22%;
+            width: 78%;
+            height: calc(100vh - var(--navbar-h));
+            margin-top: var(--navbar-h);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* SECCIÓN PEGADA AL NAVBAR */
+        .sticky-header {
+            background: white;
+            z-index: 1000;
+            padding: 0 1.5rem 1rem 1.5rem; /* Padding top en 0 para pegar al navbar */
+            border-bottom: 2px solid #edf2f7;
+            flex-shrink: 0;
+        }
+
+        .scrollable-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        /* DISEÑO DE TARJETA ESTÉTICO */
+        .tape-card {
+            border-left: 12px solid var(--tape-dark) !important;
+            background-color: var(--card-bg);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .tape-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.05) !important;
+            border-color: #cbd5e0;
+        }
+
+        .card-body-compact { padding: 0.75rem !important; }
+        .tech-badge { font-size: 0.65rem; font-weight: 800; background: #edf2f7; color: #4a5568; border: 1px solid #e2e8f0; }
+        .barcode-text { font-size: 0.8rem; color: #718096; font-weight: 600; }
+        .client-name { font-size: 0.95rem; font-weight: 700; color: #2d3748; }
+
+        .volume-box { background: #ffffff; border: 1px solid #edf2f7; border-radius: 6px; padding: 6px; }
+        .section-title { font-size: 0.75rem; letter-spacing: 1.5px; color: #a0aec0; font-weight: 800; border-bottom: 2px solid #f7fafc; margin-bottom: 15px; padding-top: 10px; }
+
+        .btn-remove-weekly {
+            position: absolute; top: 4px; right: 4px;
+            font-size: 1.2rem; z-index: 10;
+            background: white; border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark navbar-custom shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold px-3" href="/">ATOPA</a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link px-3" href="/clientes"><i class="bi bi-people"></i> Gestión de Clientes</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid p-0">
+    <div class="row g-0">
+
+        <div class="sidebar p-3">
+            <h6 class="fw-bold mb-4 text-uppercase small text-muted">Ingresar Nueva Cinta</h6>
+            <form th:action="@{/registrar-cinta}" method="post" class="card p-4 border-0 shadow-sm">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">BARCODE</label>
+                    <input type="text" name="barcode" class="form-control" placeholder="ABC001" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">CLIENTE</label>
+                    <select name="clienteId" class="form-select" required>
+                        <option value="">Seleccionar...</option>
+                        <option th:each="cl : ${clientes}" th:value="${cl.id}" th:text="${cl.nombre}"></option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">TECNOLOGÍA</label>
+                    <select name="tecnologia" class="form-select" required>
+                        <option value="LTO-6">LTO-6</option>
+                        <option value="LTO-7" selected>LTO-7</option>
+                        <option value="LTO-8">LTO-8</option>
+                        <option value="LTO-9">LTO-9</option>
+                    </select>
+                </div>
+                <div class="alert alert-info py-1 mb-2 d-flex justify-content-between align-items-center" style="font-size: 0.8rem;">
+                    <span><i class="bi bi-cpu"></i> <strong>Estado TS4300:</strong></span>
+                    <span class="badge bg-dark" th:text="'Cinta en Drive 1: ' + ${cintaEnDrive}">Cargando...</span>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mt-3 shadow-sm">Registrar Medio</button>
+            </form>
+        </div>
+
+       <div class="main-wrapper mt-1"> <!-- en este lugar podemos controlar que tan alto está el div de cintas de la semana-->
+
+            <div class="sticky-header ">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <h5 class="fw-bold m-0 text-dark">Panel de Control LTO</h5>
+                    <form th:action="@{/}" method="get" class="d-flex gap-2">
+                        <select name="clienteId" class="form-select form-select-sm" style="width: 180px;" onchange="this.form.submit()">
+                            <option value="">Todos los Clientes</option>
+                            <option th:each="cl : ${clientes}" th:value="${cl.id}" th:text="${cl.nombre}" th:selected="${cl.id == clienteSeleccionado}"></option>
+                        </select>
+                        <select name="tecnologia" class="form-select form-select-sm" style="width: 150px;" onchange="this.form.submit()">
+                            <option value="">Tecnologías</option>
+                            <option value="LTO-6" th:selected="${tecnologiaSeleccionada == 'LTO-6'}">LTO-6</option>
+                            <option value="LTO-7" th:selected="${tecnologiaSeleccionada == 'LTO-7'}">LTO-7</option>
+                            <option value="LTO-8" th:selected="${tecnologiaSeleccionada == 'LTO-8'}">LTO-8</option>
+                            <option value="LTO-9" th:selected="${tecnologiaSeleccionada == 'LTO-9'}">LTO-9</option>
+                        </select>
+                    </form>
+                </div>
+
+                <p class="section-title text-uppercase">Cintas de la Semana (Prioridad)</p>
+                <div class="row row-cols-1 row-cols-lg-5 g-2">
+                    <div class="col" th:each="cinta : ${cintasSemanales}">
+                        <div class="card h-100 shadow-sm tape-card border-0">
+                            <div class="card-body card-body-compact position-relative">
+                                <a th:href="@{/desmarcar-semanal/{id}(id=${cinta.barcode}, clienteId=${clienteSeleccionado}, tecnologia=${tecnologiaSeleccionada})}"
+                                   class="btn-remove-weekly text-danger" title="Quitar">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </a>
+                                <div class="pt-2">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="badge tech-badge" th:text="${cinta.tecnologia}"></span>
+                                        <span class="barcode-text" th:text="${cinta.barcode}"></span>
+                                    </div>
+                                    <div class="client-name text-truncate mb-2" th:text="${cinta.nombreCliente}"></div>
+                                    <div class="volume-box text-center">
+                                        <span th:text="${cinta.volumeId}" th:class="${cinta.volumeId == 'PENDIENTE'} ? 'text-danger fw-bold small' : 'text-primary fw-bold small'"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="scrollable-content">
+                <p class="section-title text-uppercase">Inventario Maestro (Archivo)</p>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 pb-5"> <div class="col" th:each="cinta : ${cintas}">
+                    <div class="card h-100 shadow-sm tape-card border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge tech-badge px-2" th:text="${cinta.tecnologia}"></span>
+                                <span class="barcode-text fw-bold" th:text="${cinta.barcode}"></span>
+                            </div>
+                            <h5 class="client-name mb-3" th:text="${cinta.nombreCliente}"></h5>
+                            <div class="volume-box text-center mb-3 py-2">
+                                <small class="text-muted d-block small mb-1">VOLUME ID (IBMi)</small>
+                                <div th:text="${cinta.volumeId}" th:class="${cinta.volumeId == 'PENDIENTE'} ? 'text-danger fw-bold h5 mb-0' : 'text-primary fw-bold h5 mb-0'"></div>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <a th:if="${cinta.volumeId == 'PENDIENTE'}" th:href="@{/relacionar/{id}(id=${cinta.barcode})}" class="btn btn-dark btn-sm fw-bold">Relacionar Nombre</a>
+                                <a th:unless="${cinta.volumeId == 'PENDIENTE'}" th:href="@{/reiniciar/{id}(id=${cinta.barcode})}" class="btn btn-outline-danger btn-sm fw-bold" onclick="return confirm('¿Reiniciar Cinta?')">Reiniciar Cinta</a>
+
+                                <a th:href="@{/marcar-semanal/{id}(id=${cinta.barcode}, clienteId=${clienteSeleccionado}, tecnologia=${tecnologiaSeleccionada})}"
+                                   class="btn btn-link btn-sm text-decoration-none text-muted p-0 mt-1">
+                                    <i class="bi bi-pin-angle"></i> Destacar para la Semana
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

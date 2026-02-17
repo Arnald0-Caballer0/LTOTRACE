@@ -13,7 +13,6 @@ public class TapeService {
 
             // Usamos CHKTAP: es más rápido y genera el mensaje de éxito CPC6778
             String mandato = "CHKTAP DEV("+ deviceName +")";
-            //System.out.println("Ejecutando comando en IBM i: " + mandato);
 
             if (command.run(mandato)) {
                 // Si el comando funciona, buscamos el mensaje de confirmación

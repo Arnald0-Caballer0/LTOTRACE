@@ -4,7 +4,7 @@ import com.ibm.as400.access.AS400;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("--- PRUEBA DE INFRAESTRUCTURA ---");
+        System.out.println("--- PRUEBA DE CONEXIÓN ---");
         DatabaseConnection.getConnection();
 
         System.out.println("\n--- CONECTANDO AL SERVIDOR POWER ---");

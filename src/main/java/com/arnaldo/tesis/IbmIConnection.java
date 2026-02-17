@@ -22,7 +22,7 @@ public class IbmIConnection {
         if (system != null) {
             system.disconnectAllServices();
             system = null;
-            System.out.println("🔌 Desconectado del IBM i");
+            System.out.println("Desconectado del IBM i");
         }
     }
 }
