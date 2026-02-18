@@ -5,7 +5,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import com.ibm.as400.access.AS400;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 public class CintaController {
@@ -21,7 +24,7 @@ public class CintaController {
 
         String techFilter = (tecnologia != null && !tecnologia.isEmpty()) ? tecnologia : null;
 
-        // 👈 CAMBIO CLAVE: Aquí debe llamar a listarSemanalesManual
+        // CAMBIO CLAVE: Aquí debe llamar a listarSemanalesManual
         model.addAttribute("cintasSemanales", cintaDAO.listarSemanalesManual(clienteId, techFilter));
 
         // El inventario completo sigue igual
@@ -33,6 +36,8 @@ public class CintaController {
 
         //consultamos informacion en la librería
         model.addAttribute("cintaEnDrive", libraryService.consultarCintaEnDrive1());
+        //consultamos si el robot está trabajando
+        model.addAttribute("estadoRobot", libraryService.obtenerEstadoRobot());
         return "index";
     }
 
@@ -98,5 +103,13 @@ public class CintaController {
         return p;
     }
 
+    @GetMapping("/api/estado-libreria")
+    @ResponseBody
+    public Map<String, String> obtenerEstadoLibreriaApi() {
+        Map<String, String> data = new HashMap<>();
+        data.put("cinta", libraryService.consultarCintaEnDrive1());
+        data.put("robot", libraryService.obtenerEstadoRobot());
+        return data;
+    }
 
 }

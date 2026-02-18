@@ -107,4 +107,26 @@ public class LibraryService {
         }
         return "SIN_DATOS";
     }
+
+    public String obtenerEstadoRobot() {
+        String token = obtenerToken();
+        if (token == null) return "OFFLINE";
+
+        String url = "https://" + ip + ":3031/rest/library/status";
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", token);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.GET, entity, JsonNode.class);
+            JsonNode root = response.getBody();
+
+            if (root != null && root.has("BaseStatus")) {
+                return root.get("BaseStatus").get("RobStatus").asText();
+            }
+        } catch (Exception e) {
+            System.err.println("Error consultando estado del robot: " + e.getMessage());
+        }
+        return "DESCONOCIDO";
+    }
 }
