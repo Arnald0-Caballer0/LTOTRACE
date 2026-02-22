@@ -114,28 +114,16 @@
                             <div class="small text-muted">
                                 Barcode actual
                             </div>
-                            <div class="mt-3 pt-2 border-top d-flex align-items-center justify-content-between">
-
-                                <div class="text-muted small">
-                                    <i class="bi bi-robot me-1"></i> Robot
-                                </div>
-
-                                <div class="d-flex align-items-center">
-        <span class="me-2 small fw-semibold"
-              th:text="${estadoRobot}">
-        </span>
-
-                                    <span class="rounded-circle"
-                                          style="width:12px;height:12px;"
-                                          th:classappend="${estadoRobot == 'Moving'} ?
-                              'bg-warning' :
-                              (${estadoRobot == 'Idle'} ?
-                                  'bg-success' :
-                                  'bg-secondary')">
-        </span>
-                                </div>
-
+<!--                            estilo de como se ve el estado del robot-->
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><i class="bi bi-robot"></i> Robot:</span>
+                                <span id="robotBadge"
+                                      class="fw-bold"
+                                      th:classappend="${estadoRobot == 'Moving'} ? 'text-primary' : 'text-secondary'"
+                                      th:text="${estadoRobot}">
+                                </span>
                             </div>
+
                         </div>
 
                     </div>
@@ -251,35 +239,32 @@
 
 <script>
     function actualizarEstadoLibreria() {
-        console.log("Consultando estado de la TS4300..."); // Para que veas en la consola que sí corre
         fetch('/api/estado-libreria')
             .then(response => response.json())
             .then(data => {
-                // 1. Actualizar el Barcode de la cinta
+                // 1. Barcode (se mantiene igual como pediste)
                 const cintaElement = document.getElementById('cintaBadge');
                 if (cintaElement) {
                     cintaElement.innerText = data.cinta;
-                    // Cambia color según si hay cinta o no (opcional)
-                    cintaElement.className = (data.cinta && data.cinta !== '---' && data.cinta !== 'VACÍO')
-                        ? 'display-6 fw-bold text-success'
-                        : 'display-6 fw-bold text-secondary';
                 }
 
-                // 2. Actualizar el estado del Robot y su color
+                // 2. Robot (ahora solo cambia el color de la letra)
                 const robotElement = document.getElementById('robotBadge');
                 if (robotElement) {
                     robotElement.innerText = data.robot;
+
                     if (data.robot === 'Moving') {
-                        robotElement.className = 'badge bg-primary pb-1 px-2 border border-light';
+                        // Texto azul y negrita cuando se mueve
+                        robotElement.className = 'fw-bold text-primary';
                     } else {
-                        robotElement.className = 'badge bg-secondary';
+                        // Texto gris cuando está Idle
+                        robotElement.className = 'fw-bold text-secondary';
                     }
                 }
             })
-            .catch(error => console.error('Error al actualizar estado:', error));
+            .catch(error => console.error('Error:', error));
     }
-
-    // Ejecutar cada 10 segundos (10000 milisegundos)
+    // Ejecutar cada 5 segundos (5000 milisegundos)
     setInterval(actualizarEstadoLibreria, 5000);
 
     // Ejecutar una vez al cargar para asegurar que los IDs estén vinculados

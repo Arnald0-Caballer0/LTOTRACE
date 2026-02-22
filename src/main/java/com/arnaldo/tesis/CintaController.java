@@ -34,7 +34,7 @@ public class CintaController {
         model.addAttribute("clienteSeleccionado", clienteId);
         model.addAttribute("tecnologiaSeleccionada", techFilter);
 
-        //consultamos informacion en la librería
+        //consultamos información en la librería
         model.addAttribute("cintaEnDrive", libraryService.consultarCintaEnDrive1());
         //consultamos si el robot está trabajando
         model.addAttribute("estadoRobot", libraryService.obtenerEstadoRobot());
