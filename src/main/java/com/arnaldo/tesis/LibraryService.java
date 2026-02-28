@@ -91,13 +91,13 @@ public class LibraryService {
                     // Buscamos LogicalNumber como String "1"
                     String logicalNum = drive.has("LogicalNumber") ? drive.get("LogicalNumber").asText() : "";
 
-                    if ("1".equals(logicalNum)) {
+                    if ("3".equals(logicalNum)) {
                         // Extraemos el Barcode de la cinta
                         JsonNode barcodeNode = drive.get("Barcode");
                         if (barcodeNode != null && !barcodeNode.isNull()) {
                             return barcodeNode.asText();
                         } else {
-                            return "DRIVE_VACÍO";
+                            return "VACÍO";
                         }
                     }
                 }

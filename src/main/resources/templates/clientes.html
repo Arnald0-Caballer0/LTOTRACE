@@ -2,64 +2,402 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
-  <title>Atopa - Clientes</title>
+  <title>ATOPA - Módulo Clientes</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root { --navbar-h: 56px; --sidebar-bg: #1a202c; --content-bg: #f4f7f9; }
+    body, html { height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; }
+    .navbar-custom { z-index: 1200; height: var(--navbar-h); }
+    .layout-wrapper { display: flex; height: calc(100vh - var(--navbar-h)); margin-top: var(--navbar-h); }
+
+    .div-izquierdo { width: 30%; background-color: var(--sidebar-bg); color: white; padding: 2rem; position: relative; display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.1); z-index: 1100; }
+    .div-derecho { width: 70%; background-color: var(--content-bg); padding: 2rem; overflow-y: auto; }
+
+    .input-cliente { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 0.9rem; }
+    .input-cliente:focus { background: rgba(255,255,255,0.1); color: white; border-color: #0d6efd; box-shadow: none; }
+    .input-cliente::placeholder { color: rgba(255,255,255,0.4); }
+    .btn-retroceder { position: absolute; top: 1rem; right: 1rem; }
+
+    /* Estilos extra para las tarjetas del dashboard */
+    .dash-card { border-radius: 10px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: 0.3s; }
+    .dash-card:hover { transform: translateY(-3px); }
+  </style>
 </head>
-<body class="bg-light">
-<nav class="navbar navbar-dark bg-dark mb-4">
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark navbar-custom fixed-top shadow-sm">
   <div class="container-fluid">
-    <a class="navbar-brand" href="/">ATOPA</a>
-    <div class="navbar-nav">
-      <a class="nav-link active" href="/clientes">Gestión de Clientes</a>
-    </div>
+    <a class="navbar-brand fw-bold px-3" href="/">ATOPA</a>
+    <div class="navbar-nav ms-auto"><a class="nav-link px-3" href="/"><i class="bi bi-house"></i> Volver al Panel LTO</a></div>
   </div>
 </nav>
 
-<div class="container">
-  <div class="row">
+<div class="layout-wrapper">
+  <div class="div-izquierdo">
+    <button class="btn btn-sm btn-outline-light btn-retroceder" title="Deshacer operación"><i class="bi bi-arrow-counterclockwise"></i></button>
+
+    <div class="mb-4 mt-2">
+      <label class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing: 1px;">Empresa / Cliente</label>
+      <select id="clienteSelect" class="form-select input-cliente fw-bold fs-5 text-white" style="background-color: rgba(255,255,255,0.05); cursor: pointer;">
+        <option value="" class="text-dark">-- Seleccione una empresa --</option>
+        <option th:each="cliente : ${listaClientes}"
+                th:value="${cliente.id}"
+                th:text="${cliente.nombre}"
+                th:data-encargado="${cliente.encargado}"
+                th:data-telefono="${cliente.telefono}"
+                th:data-correo="${cliente.email}"
+                class="text-dark">
+        </option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="small text-muted mb-1"><i class="bi bi-person"></i> Encargado</label>
+      <input type="text" id="datoEncargado" class="form-control input-cliente" placeholder="Nombre del encargado">
+    </div>
+    <div class="mb-3">
+      <label class="small text-muted mb-1"><i class="bi bi-telephone"></i> Teléfono</label>
+      <input type="text" id="datoTelefono" class="form-control input-cliente" placeholder="Teléfono de contacto">
+    </div>
+    <div class="mb-4">
+      <label class="small text-muted mb-1"><i class="bi bi-envelope"></i> Correo</label>
+      <input type="email" id="datoCorreo" class="form-control input-cliente" placeholder="Correo para actas">
+    </div>
+
+    <div class="mb-4 p-3 rounded" style="background: rgba(0,0,0,0.2);">
+      <label class="fw-bold mb-2 text-info"><i class="bi bi-gear-fill"></i> Operación a realizar</label>
+      <select id="operacionSelect" class="form-select bg-dark text-light border-secondary shadow-sm">
+        <option value="inventario">Inventario</option>
+        <option value="retiro">Retiro Cintas</option>
+        <option value="datos">Datos cliente</option>
+      </select>
+    </div>
+
+    <div class="flex-grow-1"></div>
+    <button id="btnEntrar" class="btn btn-primary w-100 py-3 fw-bold fs-6 shadow">
+      EJECUTAR OPERACIÓN <i class="bi bi-arrow-right-circle ms-2"></i>
+    </button>
+  </div>
+
+  <div class="div-derecho" id="divDerechoContenido">
+    <div class="h-100 d-flex flex-column justify-content-center align-items-center text-muted opacity-50">
+      <i class="bi bi-layers" style="font-size: 4rem;"></i>
+      <h4 class="mt-3">Seleccione una operación</h4>
+      <p>Haga clic en "Ejecutar Operación" en el panel izquierdo.</p>
+    </div>
+  </div>
+</div>
+
+<template id="tpl-inventario">
+  <div class="row mb-4">
     <div class="col-md-4">
-      <div class="card shadow mb-4">
-        <div class="card-header bg-primary text-white">Nuevo Cliente</div>
+      <div class="card dash-card bg-primary text-white h-100">
         <div class="card-body">
-          <form action="/clientes/guardar" method="post">
-            <div class="mb-3">
-              <label class="form-label">Nombre de la Empresa</label>
-              <input type="text" name="nombre" class="form-control" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Correo de Contacto</label>
-              <input type="email" name="correo" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-success w-100">Guardar Cliente</button>
-          </form>
+          <h6 class="card-title opacity-75"><i class="bi bi-robot"></i> Librería Robot</h6>
+          <h2 class="display-6 fw-bold mb-0">15</h2>
         </div>
       </div>
     </div>
-
-    <div class="col-md-8">
-      <div class="card shadow">
-        <div class="card-header bg-dark text-white">Empresas Registradas</div>
+    <div class="col-md-4">
+      <div class="card dash-card bg-success text-white h-100">
         <div class="card-body">
-          <table class="table table-striped">
-            <thead>
-            <tr>
-              <th>ID</th>
-              <th>Empresa</th>
-              <th>Correo</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="c : ${clientes}">
-              <td th:text="${c.id}">1</td>
-              <td th:text="${c.nombre}">Cliente A</td>
-              <td th:text="${c.correo}">contacto@empresa.com</td>
-            </tr>
-            </tbody>
-          </table>
+          <h6 class="card-title opacity-75"><i class="bi bi-safe"></i> En Armario</h6>
+          <h2 class="display-6 fw-bold mb-0">42</h2>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card dash-card bg-secondary text-white h-100">
+        <div class="card-body">
+          <h6 class="card-title opacity-75"><i class="bi bi-disc"></i> Vírgenes</h6>
+          <h2 class="display-6 fw-bold mb-0">8</h2>
         </div>
       </div>
     </div>
   </div>
-</div>
+
+  <div class="d-flex justify-content-between align-items-end mb-3">
+    <div>
+      <h4 class="fw-bold text-dark mb-0">Total Cintas</h4>
+      <small class="text-muted">Inventario completo del cliente</small>
+    </div>
+    <div style="width: 300px;">
+      <input type="text" class="form-control" placeholder="Buscar cinta, barcode...">
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+        <tr>
+          <th>Barcode</th>
+          <th>Nombre (Volume ID)</th>
+          <th>Tecnología</th>
+          <th>Usos</th>
+          <th>Estado</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr><td>CLN123L7</td><td>TAP001</td><td>LTO-7</td><td>12</td><td><span class="badge bg-primary">Librería</span></td></tr>
+        <tr><td>ABC456L8</td><td>TAP002</td><td>LTO-8</td><td>5</td><td><span class="badge bg-success">Armario</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-retiro">
+  <div class="row h-100">
+    <div class="col-md-7 d-flex flex-column h-100">
+      <div class="mb-3">
+        <input type="text" class="form-control" placeholder="Buscar cinta para retirar...">
+      </div>
+      <div class="card border-0 shadow-sm flex-grow-1 overflow-auto">
+        <table class="table table-hover mb-0">
+          <thead class="table-light sticky-top">
+          <tr>
+            <th width="50">Sel.</th>
+            <th>Barcode</th>
+            <th>Nombre</th>
+            <th>Tech</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td><input class="form-check-input check-retiro" type="checkbox" data-barcode="CLN123L7" data-vol="TAP001"></td>
+            <td>CLN123L7</td><td>TAP001</td><td>LTO-7</td>
+          </tr>
+          <tr>
+            <td><input class="form-check-input check-retiro" type="checkbox" data-barcode="ABC456L8" data-vol="TAP002"></td>
+            <td>ABC456L8</td><td>TAP002</td><td>LTO-8</td>
+          </tr>
+          <tr>
+            <td><input class="form-check-input check-retiro" type="checkbox" data-barcode="XYZ789L8" data-vol="TAP003"></td>
+            <td>XYZ789L8</td><td>TAP003</td><td>LTO-8</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="col-md-5 d-flex flex-column h-100">
+      <div class="card border-0 shadow-sm flex-grow-1 mb-3 bg-light">
+        <div class="card-body">
+          <h5 class="fw-bold mb-4 text-center">Acta de Retiro</h5>
+          <p class="mb-1 small"><strong>Cliente:</strong> <span id="actaClienteNombre" class="text-primary fw-bold">Seleccione un cliente</span></p>
+          <p class="mb-1 small"><strong>Encargado:</strong> <span id="actaClienteEncargado">-</span></p>
+          <p class="mb-4 small"><strong>Fecha:</strong> <span id="fechaActual"></span></p>
+          <hr>
+          <h6 class="small fw-bold text-muted">CINTAS A RETIRAR (<span id="contadorCintas">0</span>)</h6>
+          <ul id="listaCintasActa" class="list-unstyled small text-primary fw-semibold">
+            <li><em class="text-muted fw-normal">Seleccione cintas en la tabla...</em></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between mb-3">
+        <button class="btn btn-outline-primary btn-sm w-100 me-1"><i class="bi bi-envelope"></i> Email</button>
+        <button class="btn btn-outline-success btn-sm w-100 mx-1"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+        <button class="btn btn-outline-danger btn-sm w-100 ms-1"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+      </div>
+
+      <button class="btn btn-warning w-100 fw-bold py-3 shadow-sm">
+        <i class="bi bi-box-arrow-right"></i> PROCESAR RETIRO
+      </button>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-datos">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+      <h5 class="fw-bold mb-0">Actualizar Datos de Empresa</h5>
+    </div>
+    <div class="card-body p-4">
+      <div class="alert alert-info small"><i class="bi bi-info-circle"></i> Solo los administradores pueden modificar esta información.</div>
+      <form>
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Razón Social</label>
+          <input type="text" id="formDatosEmpresa" class="form-control" placeholder="Razón social del cliente">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Dirección de la Bóveda</label>
+          <input type="text" class="form-control" placeholder="Ej: Av. Principal 123">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold small">Frecuencia de Backup</label>
+          <select class="form-select">
+            <option>Semanal</option>
+            <option>Diario</option>
+            <option>Mensual</option>
+          </select>
+        </div>
+        <button class="btn btn-success mt-2"><i class="bi bi-save"></i> Guardar Cambios</button>
+      </form>
+    </div>
+  </div>
+</template>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+
+    // ==========================================
+    // 1. ELEMENTOS DE LA INTERFAZ
+    // ==========================================
+    const clienteSelect = document.getElementById("clienteSelect");
+    const datoEncargado = document.getElementById("datoEncargado");
+    const datoTelefono = document.getElementById("datoTelefono");
+    const datoCorreo = document.getElementById("datoCorreo");
+
+    const btnEntrar = document.getElementById("btnEntrar");
+    const comboSelect = document.getElementById("operacionSelect");
+    const contenedorDerecho = document.getElementById("divDerechoContenido");
+
+    // ==========================================
+    // 2. EVENTO: CAMBIAR CLIENTE (LLENA EL FORMULARIO IZQUIERDO)
+    // ==========================================
+    clienteSelect.addEventListener("change", function() {
+      const seleccion = this.options[this.selectedIndex];
+      if(seleccion.value !== "") {
+        datoEncargado.value = seleccion.getAttribute("data-encargado") || "";
+        datoTelefono.value = seleccion.getAttribute("data-telefono") || "";
+        datoCorreo.value = seleccion.getAttribute("data-correo") || "";
+      } else {
+        datoEncargado.value = ""; datoTelefono.value = ""; datoCorreo.value = "";
+      }
+    });
+
+    // ==========================================
+    // 3. EVENTO: CLIC EN "EJECUTAR OPERACIÓN"
+    // ==========================================
+    btnEntrar.addEventListener("click", function() {
+      const clienteId = clienteSelect.value;
+      const operacion = comboSelect.value;
+
+      // Validación de seguridad
+      if (clienteId === "" && operacion !== 'datos') {
+        alert("Por favor, seleccione una Empresa / Cliente en el panel izquierdo primero.");
+        return;
+      }
+
+      const templateId = "tpl-" + operacion;
+      const template = document.getElementById(templateId);
+
+      if (template) {
+        // Clonar e inyectar la pantalla seleccionada
+        const contenido = template.content.cloneNode(true);
+        contenedorDerecho.innerHTML = '';
+        contenedorDerecho.appendChild(contenido);
+
+        let nombreEmpresa = clienteSelect.options[clienteSelect.selectedIndex].text;
+        const nombreEncargado = datoEncargado.value || "-";
+
+        // ------------------------------------------
+        // Lógica si la pantalla es: DATOS CLIENTE
+        // ------------------------------------------
+        if(operacion === 'datos') {
+          document.getElementById('formDatosEmpresa').value = nombreEmpresa;
+          return; // Terminamos aquí porque no necesitamos consultar las cintas
+        }
+
+        // ==========================================
+        // LA MAGIA DE LA FASE 2: CONSULTAR API DE CINTAS
+        // ==========================================
+        fetch('/api/cintas-cliente?id=' + clienteId)
+                .then(response => response.json())
+                .then(cintas => {
+
+                  // ------------------------------------------
+                  // Lógica si la pantalla es: INVENTARIO
+                  // ------------------------------------------
+                  if (operacion === 'inventario') {
+                    const tbody = document.querySelector('.table tbody');
+                    tbody.innerHTML = ''; // Limpiamos las cintas de prueba
+
+                    let contRobot = 0, contArmario = 0, contVirgen = 0;
+
+                    cintas.forEach(c => {
+                      // Sumamos para los Dashboards según los datos de tu BD
+                      if (c.ubicacion === 'LIBRERIA') contRobot++;
+                      if (c.ubicacion === 'ARMARIO') contArmario++;
+                      if (c.estado === 'VIRGEN') contVirgen++;
+
+                      // Creamos las filas reales
+                      const tr = document.createElement('tr');
+                      let badgeClass = c.ubicacion === 'LIBRERIA' ? 'bg-primary' : (c.ubicacion === 'RETIRADO' ? 'bg-danger' : 'bg-success');
+                      tr.innerHTML = `
+                  <td>${c.barcode}</td>
+                  <td>${c.volumeId}</td>
+                  <td>${c.tecnologia || '-'}</td>
+                  <td>-</td>
+                  <td><span class="badge ${badgeClass}">${c.ubicacion}</span></td>
+                `;
+                      tbody.appendChild(tr);
+                    });
+
+                    // Actualizamos los números grandes de arriba
+                    const displays = document.querySelectorAll('.display-6');
+                    if(displays.length >= 3) {
+                      displays[0].innerText = contRobot;
+                      displays[1].innerText = contArmario;
+                      displays[2].innerText = contVirgen;
+                    }
+                  }
+
+                  // ------------------------------------------
+                  // Lógica si la pantalla es: RETIRO CINTAS
+                  // ------------------------------------------
+                  if (operacion === 'retiro') {
+                    document.getElementById('actaClienteNombre').innerText = nombreEmpresa;
+                    document.getElementById('actaClienteEncargado').innerText = nombreEncargado;
+                    document.getElementById('fechaActual').innerText = new Date().toLocaleDateString('es-PY');
+
+                    const tbody = document.querySelector('.table tbody');
+                    tbody.innerHTML = ''; // Limpiamos las cintas de prueba
+
+                    // Llenamos la tabla izquierda solo con las cintas que NO estén retiradas
+                    cintas.filter(c => c.ubicacion !== 'RETIRADO').forEach(c => {
+                      const tr = document.createElement('tr');
+                      tr.innerHTML = `
+                    <td><input class="form-check-input check-retiro" type="checkbox" data-barcode="${c.barcode}" data-vol="${c.volumeId}"></td>
+                    <td>${c.barcode}</td><td>${c.volumeId}</td><td>${c.tecnologia || '-'}</td>
+                  `;
+                      tbody.appendChild(tr);
+                    });
+
+                    // Reconectamos la lógica del Acta a la derecha
+                    const checkboxes = document.querySelectorAll('.check-retiro');
+                    const listaActa = document.getElementById('listaCintasActa');
+                    const contadorCintas = document.getElementById('contadorCintas');
+
+                    function actualizarActa() {
+                      listaActa.innerHTML = '';
+                      let cantidad = 0;
+                      checkboxes.forEach(cb => {
+                        if (cb.checked) {
+                          cantidad++;
+                          const barcode = cb.getAttribute('data-barcode');
+                          const vol = cb.getAttribute('data-vol');
+                          const li = document.createElement('li');
+                          li.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i> ${barcode} <span class="text-muted small">(${vol})</span>`;
+                          li.className = "mb-1";
+                          listaActa.appendChild(li);
+                        }
+                      });
+                      contadorCintas.innerText = cantidad;
+                      if (cantidad === 0) listaActa.innerHTML = '<li><em class="text-muted fw-normal">Seleccione cintas en la tabla...</em></li>';
+                    }
+
+                    checkboxes.forEach(cb => cb.addEventListener('change', actualizarActa));
+                  }
+                })
+                .catch(error => console.error("Error al obtener las cintas:", error));
+      }
+    });
+  });
+</script>
 </body>
 </html>

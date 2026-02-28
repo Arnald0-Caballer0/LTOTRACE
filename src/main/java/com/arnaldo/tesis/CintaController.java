@@ -14,7 +14,8 @@ import java.util.Map;
 public class CintaController {
 
     private CintaDAO cintaDAO = new CintaDAO();
-    private ClienteDAO clienteDAO = new ClienteDAO();
+    @Autowired
+    private ClienteDAO clienteDAO;
     @Autowired
     private LibraryService libraryService;
 
@@ -30,7 +31,7 @@ public class CintaController {
         // El inventario completo sigue igual
         model.addAttribute("cintas", cintaDAO.filtrarCintas(clienteId, techFilter));
 
-        model.addAttribute("clientes", clienteDAO.listarTodos());
+        model.addAttribute("clientes", clienteDAO.findAll());
         model.addAttribute("clienteSeleccionado", clienteId);
         model.addAttribute("tecnologiaSeleccionada", techFilter);
 
