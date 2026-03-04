@@ -1,29 +1,36 @@
 package com.arnaldo.tesis;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDate; // Importante para la fecha
 
 @Entity
-@Table(name = "clientes") // Aseguramos que apunte a tu tabla real
+@Table(name = "clientes")
 public class Cliente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nombre;      // Razón Social / Empresa
-    private String encargado;   // Contacto
+    private String nombre;
+    private String encargado;
     private String telefono;
-    private String email;       // Para el envío del acta
 
-    // Constructor vacío obligatorio para JPA
-    public Cliente() {
-    }
+    // Mapeamos los dos campos de correo que mencionaste
+    private String email;
+    private String correo;
 
-    // --- Getters y Setters ---
+    @Column(name = "fecha_registro")
+    private LocalDate fechaRegistro;
+
+    // Constructor vacío
+    public Cliente() {}
+
+    // --- GETTERS Y SETTERS ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -38,4 +45,10 @@ public class Cliente {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getCorreo() { return correo; }
+    public void setCorreo(String correo) { this.correo = correo; }
+
+    public LocalDate getFechaRegistro() { return fechaRegistro; }
+    public void setFechaRegistro(LocalDate fechaRegistro) { this.fechaRegistro = fechaRegistro; }
 }

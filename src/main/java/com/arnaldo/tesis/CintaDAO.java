@@ -237,4 +237,47 @@ public class CintaDAO {
         return lista;
     }
 
+    // ==========================================
+    // NUEVO: Método para procesar el retiro de múltiples cintas
+    // ==========================================
+    public void retirarCintas(List<String> barcodes) {
+        if (barcodes == null || barcodes.isEmpty()) return;
+
+        // Construimos un SQL dinámico con tantos "?" como cintas seleccionadas
+        StringBuilder sql = new StringBuilder("UPDATE cintas SET ubicacion = 'RETIRADO', ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode IN (");
+        for (int i = 0; i < barcodes.size(); i++) {
+            sql.append("?");
+            if (i < barcodes.size() - 1) sql.append(",");
+        }
+        sql.append(")");
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+
+            // Asignamos cada barcode a su respectivo "?"
+            for (int i = 0; i < barcodes.size(); i++) {
+                pstmt.setString(i + 1, barcodes.get(i));
+            }
+
+            int filasAfectadas = pstmt.executeUpdate();
+            System.out.println("Éxito: Se han retirado " + filasAfectadas + " cintas en la base de datos.");
+
+        } catch (SQLException e) {
+            System.err.println("Error al procesar el retiro masivo: " + e.getMessage());
+        }
+    }
+
+    // Método para cambiar la ubicación de una sola cinta desde el Inventario
+    public void actualizarUbicacion(String barcode, String nuevaUbicacion) {
+        String sql = "UPDATE cintas SET ubicacion = ?, ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, nuevaUbicacion);
+            pstmt.setString(2, barcode);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error al actualizar ubicación: " + e.getMessage());
+        }
+    }
+
 }

@@ -6,6 +6,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import java.util.List;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Controller
 public class ClienteController {
@@ -37,5 +39,45 @@ public class ClienteController {
 
         // ¡Usamos tu método existente que ya funciona perfecto!
         return cintaDAO.filtrarPorCliente(clienteId);
+    }
+    // Esta API recibe la lista de barcodes desde JavaScript y llama a tu DAO
+    @PostMapping("/api/retirar-cintas")
+    @ResponseBody
+    public String procesarRetiro(@RequestBody List<String> barcodes) {
+        try {
+            cintaDAO.retirarCintas(barcodes);
+            // Devolvemos un JSON simple confirmando el éxito
+            return "{\"status\":\"success\"}";
+        } catch (Exception e) {
+            return "{\"status\":\"error\"}";
+        }
+    }
+
+    // API para crear o actualizar un cliente
+    @PostMapping("/api/guardar-cliente")
+    @ResponseBody
+    public String guardarCliente(@RequestBody Cliente cliente) {
+        try {
+            // save() es inteligente: si el ID viene null, inserta. Si viene con número, actualiza.
+            clienteDAO.save(cliente);
+            return "{\"status\":\"success\"}";
+        } catch (Exception e) {
+            System.err.println("Error al guardar cliente: " + e.getMessage());
+            return "{\"status\":\"error\"}";
+        }
+    }
+
+    // API para cambiar el estado de la cinta al instante
+    @PostMapping("/api/actualizar-ubicacion")
+    @ResponseBody
+    public String actualizarUbicacionCinta(
+            @org.springframework.web.bind.annotation.RequestParam("barcode") String barcode,
+            @org.springframework.web.bind.annotation.RequestParam("ubicacion") String ubicacion) {
+        try {
+            cintaDAO.actualizarUbicacion(barcode, ubicacion);
+            return "{\"status\":\"success\"}";
+        } catch (Exception e) {
+            return "{\"status\":\"error\"}";
+        }
     }
 }

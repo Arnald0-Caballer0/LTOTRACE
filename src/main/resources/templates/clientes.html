@@ -5,6 +5,7 @@
   <title>ATOPA - Módulo Clientes</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     :root { --navbar-h: 56px; --sidebar-bg: #1a202c; --content-bg: #f4f7f9; }
     body, html { height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; }
@@ -38,31 +39,30 @@
     <button class="btn btn-sm btn-outline-light btn-retroceder" title="Deshacer operación"><i class="bi bi-arrow-counterclockwise"></i></button>
 
     <div class="mb-4 mt-2">
-      <label class="text-uppercase small fw-bold text-muted mb-1" style="letter-spacing: 1px;">Empresa / Cliente</label>
-      <select id="clienteSelect" class="form-select input-cliente fw-bold fs-5 text-white" style="background-color: rgba(255,255,255,0.05); cursor: pointer;">
-        <option value="" class="text-dark">-- Seleccione una empresa --</option>
-        <option th:each="cliente : ${listaClientes}"
-                th:value="${cliente.id}"
-                th:text="${cliente.nombre}"
-                th:data-encargado="${cliente.encargado}"
-                th:data-telefono="${cliente.telefono}"
-                th:data-correo="${cliente.email}"
-                class="text-dark">
-        </option>
-      </select>
+      <label class="text-uppercase small fw-bold text-white-50 mb-1" style="letter-spacing: 1px;">Empresa / Cliente</label>
+      <div class="d-flex gap-2">
+        <select id="clienteSelect" class="form-select input-cliente fw-bold fs-5 text-white flex-grow-1" style="background-color: rgba(255,255,255,0.05); cursor: pointer;">
+          <option value="" class="text-dark">-- Seleccione una empresa --</option>
+          <option th:each="cliente : ${listaClientes}"
+                  th:value="${cliente.id}" th:text="${cliente.nombre}"
+                  th:data-encargado="${cliente.encargado}" th:data-telefono="${cliente.telefono}" th:data-correo="${cliente.email}" class="text-dark">
+          </option>
+        </select>
+        <button id="btnNuevoCliente" class="btn btn-success shadow-sm" title="Crear Nuevo Cliente"><i class="bi bi-plus-lg fw-bold"></i></button>
+      </div>
     </div>
 
     <div class="mb-3">
-      <label class="small text-muted mb-1"><i class="bi bi-person"></i> Encargado</label>
-      <input type="text" id="datoEncargado" class="form-control input-cliente" placeholder="Nombre del encargado">
+      <label class="small text-white-50 mb-1"><i class="bi bi-person"></i> Encargado</label>
+      <div id="datoEncargado" class="text-light fw-bold border-bottom border-secondary pb-1" style="min-height: 24px;">-</div>
     </div>
     <div class="mb-3">
-      <label class="small text-muted mb-1"><i class="bi bi-telephone"></i> Teléfono</label>
-      <input type="text" id="datoTelefono" class="form-control input-cliente" placeholder="Teléfono de contacto">
+      <label class="small text-white-50 mb-1"><i class="bi bi-telephone"></i> Teléfono</label>
+      <div id="datoTelefono" class="text-light fw-bold border-bottom border-secondary pb-1" style="min-height: 24px;">-</div>
     </div>
     <div class="mb-4">
-      <label class="small text-muted mb-1"><i class="bi bi-envelope"></i> Correo</label>
-      <input type="email" id="datoCorreo" class="form-control input-cliente" placeholder="Correo para actas">
+      <label class="small text-white-50 mb-1"><i class="bi bi-envelope"></i> Correo</label>
+      <div id="datoCorreo" class="text-light fw-bold border-bottom border-secondary pb-1" style="min-height: 24px;">-</div>
     </div>
 
     <div class="mb-4 p-3 rounded" style="background: rgba(0,0,0,0.2);">
@@ -139,10 +139,6 @@
           <th>Estado</th>
         </tr>
         </thead>
-        <tbody>
-        <tr><td>CLN123L7</td><td>TAP001</td><td>LTO-7</td><td>12</td><td><span class="badge bg-primary">Librería</span></td></tr>
-        <tr><td>ABC456L8</td><td>TAP002</td><td>LTO-8</td><td>5</td><td><span class="badge bg-success">Armario</span></td></tr>
-        </tbody>
       </table>
     </div>
   </div>
@@ -183,7 +179,7 @@
     </div>
 
     <div class="col-md-5 d-flex flex-column h-100">
-      <div class="card border-0 shadow-sm flex-grow-1 mb-3 bg-light">
+      <div id="zonaActaImprimible" class="card border-0 shadow-sm flex-grow-1 mb-3 bg-light" style="padding: 10px;">
         <div class="card-body">
           <h5 class="fw-bold mb-4 text-center">Acta de Retiro</h5>
           <p class="mb-1 small"><strong>Cliente:</strong> <span id="actaClienteNombre" class="text-primary fw-bold">Seleccione un cliente</span></p>
@@ -200,10 +196,11 @@
       <div class="d-flex justify-content-between mb-3">
         <button class="btn btn-outline-primary btn-sm w-100 me-1"><i class="bi bi-envelope"></i> Email</button>
         <button class="btn btn-outline-success btn-sm w-100 mx-1"><i class="bi bi-file-earmark-excel"></i> Excel</button>
-        <button class="btn btn-outline-danger btn-sm w-100 ms-1"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+
+        <button id="btnExportarPdf" class="btn btn-outline-danger btn-sm w-100 ms-1"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
       </div>
 
-      <button class="btn btn-warning w-100 fw-bold py-3 shadow-sm">
+      <button id="btnProcesarRetiro" class="btn btn-warning w-100 fw-bold py-3 shadow-sm">
         <i class="bi bi-box-arrow-right"></i> PROCESAR RETIRO
       </button>
     </div>
@@ -213,28 +210,48 @@
 <template id="tpl-datos">
   <div class="card border-0 shadow-sm">
     <div class="card-header bg-white py-3">
-      <h5 class="fw-bold mb-0">Actualizar Datos de Empresa</h5>
+      <h5 class="fw-bold mb-0">Ficha del Cliente</h5>
     </div>
     <div class="card-body p-4">
-      <div class="alert alert-info small"><i class="bi bi-info-circle"></i> Solo los administradores pueden modificar esta información.</div>
-      <form>
-        <div class="mb-3">
-          <label class="form-label fw-bold small">Razón Social</label>
-          <input type="text" id="formDatosEmpresa" class="form-control" placeholder="Razón social del cliente">
+      <form id="formClienteBD">
+        <input type="hidden" id="formDatosId">
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small">Razón Social (Nombre)</label>
+            <input type="text" id="formDatosNombre" class="form-control" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small">Encargado</label>
+            <input type="text" id="formDatosEncargado" class="form-control">
+          </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label fw-bold small">Dirección de la Bóveda</label>
-          <input type="text" class="form-control" placeholder="Ej: Av. Principal 123">
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small">Teléfono</label>
+            <input type="text" id="formDatosTelefono" class="form-control">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small">Fecha de Registro</label>
+            <input type="date" id="formDatosFecha" class="form-control">
+          </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label fw-bold small">Frecuencia de Backup</label>
-          <select class="form-select">
-            <option>Semanal</option>
-            <option>Diario</option>
-            <option>Mensual</option>
-          </select>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small">Email (Principal)</label>
+            <input type="email" id="formDatosEmail" class="form-control">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small">Correo (Alternativo)</label>
+            <input type="email" id="formDatosCorreo" class="form-control">
+          </div>
         </div>
-        <button class="btn btn-success mt-2"><i class="bi bi-save"></i> Guardar Cambios</button>
+
+        <button id="btnGuardarBd" class="btn btn-success mt-3 w-100 fw-bold py-2 shadow-sm">
+          <i class="bi bi-save"></i> GUARDAR DATOS
+        </button>
       </form>
     </div>
   </div>
@@ -262,13 +279,44 @@
     clienteSelect.addEventListener("change", function() {
       const seleccion = this.options[this.selectedIndex];
       if(seleccion.value !== "") {
-        datoEncargado.value = seleccion.getAttribute("data-encargado") || "";
-        datoTelefono.value = seleccion.getAttribute("data-telefono") || "";
-        datoCorreo.value = seleccion.getAttribute("data-correo") || "";
+        // Usamos innerText porque ahora son etiquetas DIV, no inputs
+        datoEncargado.innerText = seleccion.getAttribute("data-encargado") || "-";
+        datoTelefono.innerText = seleccion.getAttribute("data-telefono") || "-";
+        datoCorreo.innerText = seleccion.getAttribute("data-correo") || "-";
       } else {
-        datoEncargado.value = ""; datoTelefono.value = ""; datoCorreo.value = "";
+        datoEncargado.innerText = "-"; datoTelefono.innerText = "-"; datoCorreo.innerText = "-";
       }
     });
+
+    // ------------------------------------------
+    // BOTÓN DE RETROCESO (LIMPIAR PANTALLA)
+    // ------------------------------------------
+    const btnRetroceder = document.querySelector('.btn-retroceder');
+    if(btnRetroceder) {
+      btnRetroceder.addEventListener('click', function() {
+        clienteSelect.value = "";
+        clienteSelect.dispatchEvent(new Event('change')); // Limpia los textos
+        contenedorDerecho.innerHTML = `
+                <div class="h-100 d-flex flex-column justify-content-center align-items-center text-muted opacity-50">
+                    <i class="bi bi-layers" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3">Seleccione una operación</h4>
+                    <p>Haga clic en "Ejecutar Operación" en el panel izquierdo.</p>
+                </div>`;
+      });
+    }
+
+    // ------------------------------------------
+    // BOTÓN NUEVO CLIENTE
+    // ------------------------------------------
+    const btnNuevoCliente = document.getElementById('btnNuevoCliente');
+    if(btnNuevoCliente) {
+      btnNuevoCliente.addEventListener('click', function() {
+        clienteSelect.value = ""; // Deseleccionamos todo
+        clienteSelect.dispatchEvent(new Event('change'));
+        comboSelect.value = "datos"; // Forzamos la operación a "Datos cliente"
+        document.getElementById("btnEntrar").click(); // Simulamos el clic
+      });
+    }
 
     // ==========================================
     // 3. EVENTO: CLIC EN "EJECUTAR OPERACIÓN"
@@ -295,12 +343,54 @@
         let nombreEmpresa = clienteSelect.options[clienteSelect.selectedIndex].text;
         const nombreEncargado = datoEncargado.value || "-";
 
-        // ------------------------------------------
+// ------------------------------------------
         // Lógica si la pantalla es: DATOS CLIENTE
         // ------------------------------------------
         if(operacion === 'datos') {
-          document.getElementById('formDatosEmpresa').value = nombreEmpresa;
-          return; // Terminamos aquí porque no necesitamos consultar las cintas
+          // 1. Pre-llenamos el formulario con los datos que ya sabemos del panel izquierdo
+          if (clienteId !== "") {
+            document.getElementById('formDatosId').value = clienteId;
+            document.getElementById('formDatosNombre').value = nombreEmpresa;
+            document.getElementById('formDatosEncargado').value = nombreEncargado;
+            document.getElementById('formDatosTelefono').value = datoTelefono.value;
+            document.getElementById('formDatosEmail').value = datoCorreo.value;
+            // Fecha y Correo alternativo quedarán en blanco hasta que los llenes y guardes
+          }
+
+          // 2. Escuchamos cuando le den clic a Guardar
+          const btnGuardarBd = document.getElementById('btnGuardarBd');
+          btnGuardarBd.addEventListener('click', function(e) {
+            e.preventDefault(); // Evitamos que la página se recargue de golpe
+
+            // Armamos el paquete JSON exacto como lo espera tu clase Cliente.java
+            const clienteAguardar = {
+              id: document.getElementById('formDatosId').value || null,
+              nombre: document.getElementById('formDatosNombre').value,
+              encargado: document.getElementById('formDatosEncargado').value,
+              telefono: document.getElementById('formDatosTelefono').value,
+              email: document.getElementById('formDatosEmail').value,
+              correo: document.getElementById('formDatosCorreo').value,
+              fechaRegistro: document.getElementById('formDatosFecha').value || null
+            };
+
+            // Enviamos al servidor
+            fetch('/api/guardar-cliente', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(clienteAguardar)
+            })
+                    .then(response => response.json())
+                    .then(data => {
+                      if (data.status === 'success') {
+                        alert('¡Datos guardados con éxito en la base de datos!');
+                        location.reload(); // Recargamos para que el combo box se actualice
+                      } else {
+                        alert('Error al guardar en la base de datos.');
+                      }
+                    })
+                    .catch(err => console.error(err));
+          });
+          return; // Terminamos aquí esta operación
         }
 
         // ==========================================
@@ -333,9 +423,32 @@
                   <td>${c.volumeId}</td>
                   <td>${c.tecnologia || '-'}</td>
                   <td>-</td>
-                  <td><span class="badge ${badgeClass}">${c.ubicacion}</span></td>
+                  <td>
+                      <select class="form-select form-select-sm select-ubicacion fw-bold border-secondary shadow-sm" data-barcode="${c.barcode}" style="width: 120px; font-size: 0.8rem;">
+                          <option value="LIBRERIA" ${c.ubicacion === 'LIBRERIA' ? 'selected' : ''}>Librería</option>
+                          <option value="ARMARIO" ${c.ubicacion === 'ARMARIO' ? 'selected' : ''}>Armario</option>
+                          <option value="RETIRADO" ${c.ubicacion === 'RETIRADO' ? 'selected' : ''}>Retirado</option>
+                      </select>
+                  </td>
                 `;
                       tbody.appendChild(tr);
+                    }); // Fin del forEach
+
+                    //Detectar cuando cambias el estado de una cinta en la tabla
+                    document.querySelectorAll('.select-ubicacion').forEach(select => {
+                      select.addEventListener('change', function() {
+                        const barcode = this.getAttribute('data-barcode');
+                        const nuevaUbi = this.value;
+
+                        fetch(`/api/actualizar-ubicacion?barcode=${barcode}&ubicacion=${nuevaUbi}`, { method: 'POST' })
+                                .then(res => res.json())
+                                .then(data => {
+                                  if (data.status === 'success') {
+                                    // Simulamos presionar Enter de nuevo para recalcular el Dashboard y la tabla automáticamente
+                                    document.getElementById("btnEntrar").click();
+                                  }
+                                });
+                      });
                     });
 
                     // Actualizamos los números grandes de arriba
@@ -392,6 +505,75 @@
                     }
 
                     checkboxes.forEach(cb => cb.addEventListener('change', actualizarActa));
+                    // ==========================================
+                    // LÓGICA DEL BOTÓN: PROCESAR RETIRO
+                    // ==========================================
+                    const btnProcesarRetiro = document.getElementById('btnProcesarRetiro');
+                    if (btnProcesarRetiro) {
+                      btnProcesarRetiro.addEventListener('click', function() {
+
+                        // 1. Recolectamos solo los barcodes de las casillas que están marcadas
+                        const seleccionados = document.querySelectorAll('.check-retiro:checked');
+                        const barcodes = Array.from(seleccionados).map(cb => cb.getAttribute('data-barcode'));
+
+                        // 2. Validamos que haya seleccionado algo
+                        if (barcodes.length === 0) {
+                          alert('Por favor, seleccione al menos una cinta en la tabla izquierda para retirar.');
+                          return;
+                        }
+
+                        // 3. Confirmación de seguridad
+                        if (confirm(`¿Está seguro de que desea procesar el retiro de ${barcodes.length} cinta(s)?`)) {
+
+                          // 4. Enviamos la lista al backend (Java) mediante método POST
+                          fetch('/api/retirar-cintas', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(barcodes)
+                          })
+                                  .then(response => response.json())
+                                  .then(data => {
+                                    if (data.status === 'success') {
+                                      alert('¡Retiro procesado exitosamente en la base de datos!');
+                                      // TRUCO: Simulamos un clic en "Ejecutar" para recargar la tabla y limpiar la pantalla
+                                      document.getElementById("btnEntrar").click();
+                                    } else {
+                                      alert('Hubo un error al comunicarse con el servidor.');
+                                    }
+                                  })
+                                  .catch(error => console.error('Error:', error));
+                        }
+                      });
+                    }
+                    // ==========================================
+                    // LÓGICA DEL BOTÓN: EXPORTAR A PDF
+                    // ==========================================
+                    const btnExportarPdf = document.getElementById('btnExportarPdf');
+                    if (btnExportarPdf) {
+                      btnExportarPdf.addEventListener('click', function() {
+                        // 1. Verificamos que haya cintas seleccionadas en el acta
+                        const cantCintas = parseInt(document.getElementById('contadorCintas').innerText);
+                        if (cantCintas === 0) {
+                          alert("Seleccione al menos una cinta para generar el acta.");
+                          return;
+                        }
+
+                        // 2. Tomamos la zona del HTML que queremos convertir
+                        const elementoAImprimir = document.getElementById('zonaActaImprimible');
+
+                        // 3. Configuramos cómo queremos el PDF
+                        const opciones = {
+                          margin:       10, // Márgenes en milímetros
+                          filename:     `Acta_Retiro_${nombreEmpresa.replace(/\s+/g, '_')}.pdf`, // Nombre dinámico
+                          image:        { type: 'jpeg', quality: 0.98 },
+                          html2canvas:  { scale: 2 }, // Mejora la nitidez de las letras
+                          jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+
+                        // 4. Disparamos la magia
+                        html2pdf().set(opciones).from(elementoAImprimir).save();
+                      });
+                    }
                   }
                 })
                 .catch(error => console.error("Error al obtener las cintas:", error));

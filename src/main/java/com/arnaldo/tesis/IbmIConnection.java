@@ -3,7 +3,6 @@ package com.arnaldo.tesis;
 import com.ibm.as400.access.AS400;
 
 public class IbmIConnection {
-    // Datos de tu LPAR de contingencia
     private static final String SYSTEM_NAME = "***IP***";
     private static final String USER = "qsecofr";
     private static final String PASSWORD = "***ELIMINADO***";
