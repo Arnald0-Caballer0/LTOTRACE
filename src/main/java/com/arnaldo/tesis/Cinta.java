@@ -32,6 +32,9 @@ public class Cinta {
     @Transient
     private String nombreCliente;
 
+    @Column(name = "dia_semana")
+    private String diaSemana;
+
     // 1. Constructor vacío (Obligatorio para que Spring JPA funcione)
     public Cinta() {
     }
@@ -61,6 +64,9 @@ public class Cinta {
 
     public String getTecnologia() { return tecnologia; }
     public void setTecnologia(String tecnologia) { this.tecnologia = tecnologia; }
+
+    public String getDiaSemana() { return diaSemana; }
+    public void setDiaSemana(String diaSemana) { this.diaSemana = diaSemana; }
 
     public Cliente getCliente() { return cliente; }
     public void setCliente(Cliente cliente) { this.cliente = cliente; }

@@ -42,20 +42,6 @@ public class CintaController {
         return "index";
     }
 
-    @GetMapping("/desmarcar-semanal/{barcode}")
-    public String desmarcar(@PathVariable(name = "barcode") String barcode,
-                            @RequestParam(name = "clienteId", required = false) Integer clienteId,
-                            @RequestParam(name = "tecnologia", required = false) String tecnologia) {
-
-        cintaDAO.actualizarEstadoSemanal(barcode, false);
-
-        // Retornamos manteniendo los filtros para que no se reinicie la página
-        String redirectUrl = "redirect:/?";
-        if (clienteId != null) redirectUrl += "clienteId=" + clienteId + "&";
-        if (tecnologia != null && !tecnologia.isEmpty()) redirectUrl += "tecnologia=" + tecnologia;
-
-        return redirectUrl;
-    }
 
     @PostMapping("/registrar-cinta")
     public String registrar(@RequestParam(name = "barcode") String barcode,
@@ -85,15 +71,27 @@ public class CintaController {
         return "redirect:/";
     }
 
-    //seccion donde seleccionamos la cintas semanales
-    @GetMapping("/marcar-semanal/{barcode}")
-    public String marcar(@PathVariable(name = "barcode") String barcode,
-                         @RequestParam(name = "clienteId", required = false) Integer clienteId,
-                         @RequestParam(name = "tecnologia", required = false) String tecnologia) {
-        cintaDAO.actualizarEstadoSemanal(barcode, true);
-        // Construimos la URL de regreso con los filtros actuales
-        String params = construirParametros(clienteId, tecnologia);
-        return "redirect:/" + params;
+    // Modifica tu método de marcar para que reciba el día
+    @GetMapping("/marcar-semanal/{id}")
+    public String marcarSemanal(@PathVariable("id") String barcode,
+                                @RequestParam(value = "dia", required = false) String dia,
+                                @RequestParam(value = "clienteId", required = false) Integer clienteId,
+                                @RequestParam(value = "tecnologia", required = false) String tecnologia) {
+        // Usamos el nuevo método del DAO
+        cintaDAO.asignarDiaSemanal(barcode, dia);
+
+        // ... (tu lógica de redirección se mantiene igual, redirigiendo a "/")
+        return "redirect:/"; // O como lo tengas actualmente
+    }
+
+    @GetMapping("/desmarcar-semanal/{id}")
+    public String desmarcarSemanal(@PathVariable("id") String barcode,
+                                   @RequestParam(value = "clienteId", required = false) Integer clienteId,
+                                   @RequestParam(value = "tecnologia", required = false) String tecnologia) {
+        // Usamos el nuevo método para limpiar
+        cintaDAO.quitarDiaSemanal(barcode);
+
+        return "redirect:/";
     }
 
     // Método auxiliar para no repetir código

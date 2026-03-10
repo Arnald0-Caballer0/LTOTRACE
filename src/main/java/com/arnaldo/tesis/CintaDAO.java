@@ -206,9 +206,9 @@ public class CintaDAO {
     // Para listar solo las que tú seleccionaste
     public List<Cinta> listarSemanalesManual(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
-        // CRITICAL: El WHERE debe incluir c.es_semanal = TRUE
+        // 1. Agregamos c.dia_semana al SELECT
         StringBuilder sql = new StringBuilder(
-                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
+                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, c.dia_semana " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id " +
                         "WHERE c.es_semanal = TRUE"
         );
@@ -218,22 +218,19 @@ public class CintaDAO {
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-
-            int i = 1;
-            if (clienteId != null) pstmt.setInt(i++, clienteId);
-            if (tecnologia != null && !tecnologia.isEmpty()) pstmt.setString(i++, tecnologia);
-
+            // ... (seteos de los preapared statements) ...
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
-                lista.add(new Cinta(
+                Cinta cinta = new Cinta(
                         rs.getString("barcode"), rs.getString("volume_id"),
                         rs.getString("ubicacion"), rs.getString("estado"),
                         rs.getString("cliente"), rs.getString("tecnologia")
-                ));
+                );
+                // 2. Le inyectamos el día a la cinta
+                cinta.setDiaSemana(rs.getString("dia_semana"));
+                lista.add(cinta);
             }
-        } catch (SQLException e) {
-            System.err.println("Error en listarSemanalesManual: " + e.getMessage());
-        }
+        } catch (SQLException e) { System.err.println("Error: " + e.getMessage()); }
         return lista;
     }
 
@@ -278,6 +275,27 @@ public class CintaDAO {
         } catch (SQLException e) {
             System.err.println("Error al actualizar ubicación: " + e.getMessage());
         }
+    }
+
+    // Método para asignar un día específico
+    public void asignarDiaSemanal(String barcode, String dia) {
+        String sql = "UPDATE cintas SET es_semanal = TRUE, dia_semana = ? WHERE barcode = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, dia);
+            pstmt.setString(2, barcode);
+            pstmt.executeUpdate();
+        } catch (SQLException e) { System.err.println("Error al asignar día: " + e.getMessage()); }
+    }
+
+    // Método para vaciar la casilla
+    public void quitarDiaSemanal(String barcode) {
+        String sql = "UPDATE cintas SET es_semanal = FALSE, dia_semana = NULL WHERE barcode = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, barcode);
+            pstmt.executeUpdate();
+        } catch (SQLException e) { System.err.println("Error al quitar día: " + e.getMessage()); }
     }
 
 }
