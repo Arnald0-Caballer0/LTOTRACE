@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
-  <title>ATOPA - Módulo Clientes</title>
+  <title>LTOTRACE - Módulo Clientes</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -29,7 +29,7 @@
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark navbar-custom fixed-top shadow-sm">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold px-3" href="/">ATOPA</a>
+    <a class="navbar-brand fw-bold px-3" href="/">LTOTRACE</a>
     <div class="navbar-nav ms-auto"><a class="nav-link px-3" href="/"><i class="bi bi-house"></i> Volver al Panel LTO</a></div>
   </div>
 </nav>
@@ -42,7 +42,7 @@
       <label class="text-uppercase small fw-bold text-white-50 mb-1" style="letter-spacing: 1px;">Empresa / Cliente</label>
       <div class="d-flex gap-2">
         <select id="clienteSelect" class="form-select input-cliente fw-bold fs-5 text-white flex-grow-1" style="background-color: rgba(255,255,255,0.05); cursor: pointer;">
-          <option value="" class="text-dark">-- Seleccione una empresa --</option>
+          <option value="" class="text-dark">Seleccione un Cliente</option>
           <option th:each="cliente : ${listaClientes}"
                   th:value="${cliente.id}" th:text="${cliente.nombre}"
                   th:data-encargado="${cliente.encargado}" th:data-telefono="${cliente.telefono}" th:data-correo="${cliente.email}" class="text-dark">

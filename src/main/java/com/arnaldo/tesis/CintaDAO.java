@@ -206,19 +206,37 @@ public class CintaDAO {
     // Para listar solo las que tú seleccionaste
     public List<Cinta> listarSemanalesManual(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
-        // 1. Agregamos c.dia_semana al SELECT
+
+        // 1. Iniciamos la consulta base
         StringBuilder sql = new StringBuilder(
                 "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, c.dia_semana " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id " +
                         "WHERE c.es_semanal = TRUE"
         );
 
-        if (clienteId != null) sql.append(" AND c.cliente_id = ?");
-        if (tecnologia != null && !tecnologia.isEmpty()) sql.append(" AND c.tecnologia = ?");
+        // 2. Si se mandó un clienteId en el filtro, lo agregamos al SQL
+        if (clienteId != null) {
+            sql.append(" AND c.cliente_id = ?");
+        }
+
+        // 3. (Opcional) Si también quieres que filtre por tecnología
+        if (tecnologia != null && !tecnologia.isEmpty()) {
+            sql.append(" AND c.tecnologia = ?");
+        }
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-            // ... (seteos de los preapared statements) ...
+
+            int paramIndex = 1;
+
+            // Reemplazamos los "?" de forma dinámica
+            if (clienteId != null) {
+                pstmt.setInt(paramIndex++, clienteId);
+            }
+            if (tecnologia != null && !tecnologia.isEmpty()) {
+                pstmt.setString(paramIndex++, tecnologia);
+            }
+
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 Cinta cinta = new Cinta(
@@ -226,11 +244,12 @@ public class CintaDAO {
                         rs.getString("ubicacion"), rs.getString("estado"),
                         rs.getString("cliente"), rs.getString("tecnologia")
                 );
-                // 2. Le inyectamos el día a la cinta
                 cinta.setDiaSemana(rs.getString("dia_semana"));
                 lista.add(cinta);
             }
-        } catch (SQLException e) { System.err.println("Error: " + e.getMessage()); }
+        } catch (SQLException e) {
+            System.err.println("Error al listar semanales: " + e.getMessage());
+        }
         return lista;
     }
 

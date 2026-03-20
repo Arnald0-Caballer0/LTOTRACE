@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>ATOPA</title>
+    <title>LTOTRACE</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
@@ -100,19 +100,33 @@
         .volume-box { background: #ffffff; border: 1px solid #edf2f7; border-radius: 6px; padding: 6px; }
         .section-title { font-size: 0.75rem; letter-spacing: 1.5px; color: #a0aec0; font-weight: 800; border-bottom: 2px solid #f7fafc; margin-bottom: 15px; padding-top: 10px; }
 
-        .btn-remove-weekly {
-            position: absolute; top: 4px; right: 4px;
+.btn-remove-weekly {
+            position: absolute;
+            top: 4px; right: 4px;
             font-size: 1.2rem; z-index: 10;
             background: white; border-radius: 50%;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
         }
+
+        .tape-card:hover .btn-remove-weekly {
+            opacity: 1;
+        }
+
+        /* --- COLORES DINÁMICOS POR TECNOLOGÍA --- */
+        .border-LTO-7 { border-left-color: #6c5b85 !important; }
+        .border-LTO-8 { border-left-color: #824546 !important; }
+        .border-LTO-9 { border-left-color: #35544c !important; }
+        .border-LTO-6 { border-left-color: #4a5568 !important; } /* Color por si hay cintas LTO-6 */
+
     </style>
 </head>
 <body>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark navbar-custom shadow-sm">
     <div class="container-fluid">
-        <a class="navbar-brand fw-bold px-3" href="/">ATOPA</a>
+        <a class="navbar-brand fw-bold px-3" href="/">LTOTRACE</a>
         <div class="navbar-nav ms-auto">
             <a class="nav-link px-3" href="/clientes"><i class="bi bi-people"></i> Gestión de Clientes</a>
         </div>
@@ -204,8 +218,10 @@
                     </form>
                 </div>
 
-                <p class="section-title text-uppercase">Cintas de la Semana (Prioridad)</p>
-                <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-2" id="gridSemanales">
+                <div th:if="${clienteSeleccionado != null}" class="mb-4">
+                    <p class="section-title text-uppercase">Cintas de la Semana (Prioridad)</p>
+                    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-2" id="gridSemanales">
+                    </div>
                 </div>
 
             </div>
@@ -213,7 +229,7 @@
             <div class="scrollable-content">
                 <p class="section-title text-uppercase">Inventario Maestro (Archivo)</p>
                 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 pb-5"> <div class="col" th:each="cinta : ${cintas}">
-                    <div class="card h-100 shadow-sm tape-card border-0">
+                    <div class="card h-100 shadow-sm tape-card border-0" th:classappend="'border-' + ${cinta.tecnologia}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="badge tech-badge px-2" th:text="${cinta.tecnologia}"></span>
@@ -328,7 +344,7 @@
                 if (cintaDelDia) {
                     const classVol = cintaDelDia.volumeId === 'PENDIENTE' ? 'text-danger fw-bold small' : 'text-primary fw-bold small';
                     col.innerHTML = `
-                        <div class="card h-100 shadow-sm tape-card border-0">
+                        <div class="card h-100 shadow-sm tape-card border-0 border-${cintaDelDia.tecnologia}">
                             <div class="card-body card-body-compact position-relative">
                                 <a href="/desmarcar-semanal/${cintaDelDia.barcode}?clienteId=${clienteSeleccionado || ''}&tecnologia=${tecnologiaSeleccionada || ''}"
                                    class="btn-remove-weekly text-danger" title="Quitar">
