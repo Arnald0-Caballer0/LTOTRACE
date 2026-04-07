@@ -111,4 +111,27 @@ public class CintaController {
         return data;
     }
 
+    // ==========================================
+    // NUEVO ENDPOINT: Mover la cinta físicamente
+    // ==========================================
+    @PostMapping("/api/mover-cinta-robot")
+    @ResponseBody
+    public Map<String, String> moverCintaRobot(@RequestParam("barcode") String barcode) {
+        Map<String, String> respuesta = new HashMap<>();
+
+        // Llamamos al servicio que acabas de configurar
+        String resultado = libraryService.moverCinta(barcode);
+
+        if ("SUCCESS".equals(resultado)) {
+            respuesta.put("status", "success");
+            respuesta.put("mensaje", "Comando de movimiento enviado al robot TS4300.");
+        } else {
+            // Si hubo un error de seguridad o librería llena, lo devolvemos
+            respuesta.put("status", "error");
+            respuesta.put("mensaje", resultado);
+        }
+
+        return respuesta;
+    }
+
 }

@@ -15,6 +15,8 @@ import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import javax.net.ssl.SSLContext;
 import java.util.Map;
@@ -128,5 +130,126 @@ public class LibraryService {
             System.err.println("Error consultando estado del robot: " + e.getMessage());
         }
         return "DESCONOCIDO";
+    }
+
+    // ==========================================
+    // MÉTODOS AUXILIARES PARA LEER EL JSON
+    // ==========================================
+
+    private String buscarSlotDeCinta(JsonNode slotsNode, String barcode) {
+        if (slotsNode != null && slotsNode.isArray()) {
+            for (JsonNode slot : slotsNode) {
+                // Buscamos un slot que tenga Cartridge = TRUE y el Barcode coincida
+                if ("TRUE".equalsIgnoreCase(slot.path("Cartridge").asText()) &&
+                        barcode.equalsIgnoreCase(slot.path("Barcode").asText())) {
+                    return slot.path("LogicalNumber").asText();
+                }
+            }
+        }
+        return null; // No se encontró la cinta
+    }
+
+    private String buscarSlotVacio(JsonNode slotsNode) {
+        if (slotsNode != null && slotsNode.isArray()) {
+            for (JsonNode slot : slotsNode) {
+                // Buscamos un slot donde Cartridge sea FALSE
+                if ("FALSE".equalsIgnoreCase(slot.path("Cartridge").asText())) {
+                    String logicalNumber = slot.path("LogicalNumber").asText();
+                    // Asegurarnos de que sea un slot válido de la forma "1.X" (del 1.1 al 1.40)
+                    if (logicalNumber != null && logicalNumber.startsWith("1.")) {
+                        return logicalNumber;
+                    }
+                }
+            }
+        }
+        return null; // Si llega aquí, es que los 40 slots están llenos
+    }
+
+    // Método principal que será llamado desde el botón de la web
+    public String moverCinta(String barcode) {
+        try {
+            // 1. OBTENER TOKEN DE AUTENTICACIÓN
+            String token = obtenerToken();
+            if (token == null) return "Error: No se pudo autenticar con la TS4300.";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", token);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // 2. OBTENER INVENTARIO (Usando tu RestTemplate)
+            String urlInventario = "https://" + ip + ":3031/rest/partition/inventory?partitionNum=1";
+            HttpEntity<String> entityGet = new HttpEntity<>(headers);
+            ResponseEntity<String> responseInv = restTemplate.exchange(urlInventario, HttpMethod.GET, entityGet, String.class);
+            String inventarioJson = responseInv.getBody();
+
+            // Analizar el JSON con Jackson
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(inventarioJson);
+            JsonNode slotsNode = rootNode.path("Slots");
+
+            // 3. LÓGICA DE MOVIMIENTO
+            String cintaActualEnDrive = consultarCintaEnDrive1();
+            // Manejamos las distintas formas en que tu método puede decir que está vacío
+            boolean driveVacio = (cintaActualEnDrive == null || cintaActualEnDrive.trim().isEmpty() || cintaActualEnDrive.equals("---") || cintaActualEnDrive.equals("VACÍO"));
+            boolean esLaMismaCinta = barcode.equalsIgnoreCase(cintaActualEnDrive);
+
+            String jsonPayload = "";
+            String driveAddress = "3"; //Especificar Drive
+
+            if (esLaMismaCinta) {
+                // ==========================================
+                // ACCIÓN: DESCARGAR (Drive -> Slot)
+                // ==========================================
+                String slotVacio = buscarSlotVacio(slotsNode);
+                if (slotVacio == null) {
+                    return "Error: La librería está llena. No hay slots vacíos (1.1 - 1.40) para descargar la cinta.";
+                }
+
+                jsonPayload = "{" +
+                        "\"SrcType\": \"Drive\"," +
+                        "\"SrcAddress\": \"" + driveAddress + "\"," +
+                        "\"DestType\": \"Slot\"," +
+                        "\"DestAddress\": \"" + slotVacio + "\"" +
+                        "}";
+            } else {
+                // ==========================================
+                // ACCIÓN: CARGAR (Slot -> Drive)
+                // ==========================================
+                // SEGURIDAD: Si el Drive tiene OTRA cinta, bloqueamos.
+                if (!driveVacio) {
+                    return "Error de Seguridad: El Drive ya está ocupado por la cinta [" + cintaActualEnDrive + "]. Debes descargarla primero.";
+                }
+
+                String slotOrigen = buscarSlotDeCinta(slotsNode, barcode);
+                if (slotOrigen == null) {
+                    return "Error: No se encontró la cinta [" + barcode + "] en los slots de la librería.";
+                }
+
+                jsonPayload = "{" +
+                        "\"SrcType\": \"Slot\"," +
+                        "\"SrcAddress\": \"" + slotOrigen + "\"," +
+                        "\"DestType\": \"Drive\"," +
+                        "\"DestAddress\": \"" + driveAddress + "\"" +
+                        "}";
+            }
+
+            // 4. ENVIAR LA ORDEN DE MOVIMIENTO (POST)
+            String urlMove = "https://" + ip + ":3031/rest/library/movemedia";
+            HttpEntity<String> entityPost = new HttpEntity<>(jsonPayload, headers);
+
+            // Disparamos la petición POST con el JSON en el cuerpo
+            ResponseEntity<String> responseMove = restTemplate.exchange(urlMove, HttpMethod.POST, entityPost, String.class);
+
+            // Verificamos si la respuesta de la TS4300 fue exitosa (200 OK o 201 Created)
+            if (responseMove.getStatusCode() == HttpStatus.OK || responseMove.getStatusCode() == HttpStatus.CREATED || responseMove.getStatusCode() == HttpStatus.ACCEPTED) {
+                return "SUCCESS";
+            } else {
+                return "Error inesperado del robot al intentar mover la cinta. Código HTTP: " + responseMove.getStatusCodeValue();
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Excepción interna al comunicarse con TS4300: " + e.getMessage();
+        }
     }
 }

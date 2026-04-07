@@ -114,6 +114,25 @@
             opacity: 1;
         }
 
+        /* NUEVO: Estilo del botón para mover la cinta físicamente */
+        .btn-move-robot {
+            position: absolute;
+            top: 4px; right: 35px; /* Lo ubicamos justo a la izquierda de la X roja */
+            font-size: 1.2rem; z-index: 10;
+            background: white; border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            color: #0d6efd; /* Color azul de Bootstrap */
+            border: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        /* Hacemos que AMBOS botones aparezcan al pasar el cursor sobre la tarjeta */
+        .tape-card:hover .btn-remove-weekly,
+        .tape-card:hover .btn-move-robot {
+            opacity: 1;
+        }
+
         /* --- COLORES DINÁMICOS POR TECNOLOGÍA --- */
         .border-LTO-7 { border-left-color: #6c5b85 !important; }
         .border-LTO-8 { border-left-color: #824546 !important; }
@@ -350,6 +369,9 @@
                                    class="btn-remove-weekly text-danger" title="Quitar">
                                     <i class="bi bi-x-circle-fill"></i>
                                 </a>
+                                <button type="button" class="btn-move-robot" title="Mover Cinta en Robot" onclick="procesarMovimientoFisico('${cintaDelDia.barcode}')">
+                                    <i class="bi bi-arrow-left-right"></i>
+                                </button>
                                 <div class="pt-2">
                                     <div class="d-flex justify-content-between mb-1">
                                         <span class="badge tech-badge">${cintaDelDia.tecnologia}</span>
@@ -403,6 +425,35 @@
             });
         }
     });
+
+    // ==========================================
+    // FUNCIÓN PARA ENVIAR ORDEN AL ROBOT
+    // ==========================================
+    function procesarMovimientoFisico(barcode) {
+        if (confirm(`ATENCIÓN\n\nSe enviará una orden al robot TS4300 para mover físicamente la cinta [ ${barcode} ].\n\n¿Estás completamente seguro de proceder?`)) {
+
+            // Opcional: Mostrar un pequeño aviso mientras se comunica
+            alert("Enviando comando al robot. Esto tomará unos segundos...");
+
+            fetch(`/api/mover-cinta-robot?barcode=${barcode}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('ÉXITO: ' + data.mensaje);
+                    // Forzamos que se actualice el estado del robot y el drive en pantalla
+                    actualizarEstadoLibreria();
+                } else {
+                    alert('ERROR:\n' + data.mensaje);
+                }
+            })
+            .catch(error => {
+                console.error('Error de conexión:', error);
+                alert('Ocurrió un error de red al intentar comunicarse con el servidor Java.');
+            });
+        }
+    }
 </script>
 </body>
 </html>
