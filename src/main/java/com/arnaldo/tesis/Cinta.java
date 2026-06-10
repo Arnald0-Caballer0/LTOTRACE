@@ -7,7 +7,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-
+import org.hibernate.annotations.UpdateTimestamp;
+import java.time.LocalDateTime;
 @Entity
 @Table(name = "cintas")
 public class Cinta {
@@ -34,6 +35,10 @@ public class Cinta {
 
     @Column(name = "dia_semana")
     private String diaSemana;
+
+    @UpdateTimestamp
+    @Column(name = "ultima_modificacion", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    private LocalDateTime ultimaModificacion;
 
     // 1. Constructor vacío (Obligatorio para que Spring JPA funcione)
     public Cinta() {
@@ -73,4 +78,12 @@ public class Cinta {
 
     public String getNombreCliente() { return nombreCliente; }
     public void setNombreCliente(String nombreCliente) { this.nombreCliente = nombreCliente; }
+
+    public LocalDateTime getUltimaModificacion() {
+        return ultimaModificacion;
+    }
+
+    public void setUltimaModificacion(LocalDateTime ultimaModificacion) {
+        this.ultimaModificacion = ultimaModificacion;
+    }
 }
