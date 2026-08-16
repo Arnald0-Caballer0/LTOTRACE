@@ -5,9 +5,8 @@ import java.time.LocalDateTime;
 /**
  * Representa una fila de la tabla "movimientos".
  * Es la bitácora de trazabilidad: cada vez que una cinta cambia de estado,
- * se ubica, se relaciona o se retira, queda registrado aquí.
- *
- * Es un POJO simple (sin JPA) para mantener el mismo estilo JDBC del CintaDAO.
+ * se ubica, se relaciona o se retira, queda registrado aquí, junto con
+ * el usuario que lo hizo.
  */
 public class Movimiento {
 
@@ -17,18 +16,20 @@ public class Movimiento {
     private LocalDateTime fecha;
     private String observacion;
     private String comprobanteDigital;
+    private String usuario;
 
     public Movimiento() {
     }
 
-    public Movimiento(Long id, String barcode, String tipoMovimiento,
-                      LocalDateTime fecha, String observacion, String comprobanteDigital) {
+    public Movimiento(Long id, String barcode, String tipoMovimiento, LocalDateTime fecha,
+                      String observacion, String comprobanteDigital, String usuario) {
         this.id = id;
         this.barcode = barcode;
         this.tipoMovimiento = tipoMovimiento;
         this.fecha = fecha;
         this.observacion = observacion;
         this.comprobanteDigital = comprobanteDigital;
+        this.usuario = usuario;
     }
 
     // --- Getters y Setters ---
@@ -49,4 +50,7 @@ public class Movimiento {
 
     public String getComprobanteDigital() { return comprobanteDigital; }
     public void setComprobanteDigital(String comprobanteDigital) { this.comprobanteDigital = comprobanteDigital; }
+
+    public String getUsuario() { return usuario; }
+    public void setUsuario(String usuario) { this.usuario = usuario; }
 }

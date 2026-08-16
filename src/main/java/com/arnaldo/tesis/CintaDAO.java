@@ -24,13 +24,14 @@ public class CintaDAO {
      */
     private void registrarMovimiento(Connection conn, String barcode, String tipoMovimiento,
                                      String observacion, String comprobanteDigital) throws SQLException {
-        String sql = "INSERT INTO movimientos (barcode, tipo_movimiento, observacion, comprobante_digital) " +
-                "VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO movimientos (barcode, tipo_movimiento, observacion, comprobante_digital, usuario) " +
+                "VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, barcode);
             pstmt.setString(2, tipoMovimiento);
             pstmt.setString(3, observacion);
             pstmt.setString(4, comprobanteDigital);
+            pstmt.setString(5, UsuarioActual.get()); // QUIÉN hizo el movimiento
             pstmt.executeUpdate();
         }
     }
@@ -52,7 +53,7 @@ public class CintaDAO {
     /** Lee el historial de una cinta (más reciente primero). Para la vista de trazabilidad. */
     public List<Movimiento> listarMovimientos(String barcode) {
         List<Movimiento> lista = new ArrayList<>();
-        String sql = "SELECT id, barcode, tipo_movimiento, fecha, observacion, comprobante_digital " +
+        String sql = "SELECT id, barcode, tipo_movimiento, fecha, observacion, comprobante_digital, usuario " +
                 "FROM movimientos WHERE barcode = ? ORDER BY fecha DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -65,7 +66,8 @@ public class CintaDAO {
                         rs.getString("tipo_movimiento"),
                         rs.getTimestamp("fecha") != null ? rs.getTimestamp("fecha").toLocalDateTime() : null,
                         rs.getString("observacion"),
-                        rs.getString("comprobante_digital")
+                        rs.getString("comprobante_digital"),
+                        rs.getString("usuario")
                 ));
             }
         } catch (SQLException e) {
