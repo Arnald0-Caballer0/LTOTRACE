@@ -13,49 +13,160 @@ import java.util.List;
 @Repository
 public class CintaDAO {
 
-    // 1. Registro inicial (cuando entra la cinta al armario)
-    public void registrarCinta(String barcode, String volumeId, int clienteId, String tecnologia) {
-        String sql = "INSERT INTO cintas (barcode, volume_id, cliente_id, ubicacion, tecnologia) VALUES (?, ?, ?, 'ARMARIO', ?)";
+    // ==========================================================
+    // NÚCLEO DE TRAZABILIDAD: registro de movimientos
+    // ==========================================================
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
+    /**
+     * Inserta un movimiento usando una conexión YA ABIERTA.
+     * Se usa dentro de una transacción, junto con el cambio en "cintas",
+     * para que ambos se confirmen (commit) o se deshagan (rollback) juntos.
+     */
+    private void registrarMovimiento(Connection conn, String barcode, String tipoMovimiento,
+                                     String observacion, String comprobanteDigital) throws SQLException {
+        String sql = "INSERT INTO movimientos (barcode, tipo_movimiento, observacion, comprobante_digital) " +
+                "VALUES (?, ?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, barcode);
-            pstmt.setString(2, volumeId);
-            pstmt.setInt(3, clienteId);
-            pstmt.setString(4, tecnologia);
-
+            pstmt.setString(2, tipoMovimiento);
+            pstmt.setString(3, observacion);
+            pstmt.setString(4, comprobanteDigital);
             pstmt.executeUpdate();
-            System.out.println("Cinta " + barcode + " registrada con éxito.");
-
-        } catch (SQLException e) {
-            System.err.println("Error al registrar: " + e.getMessage());
         }
     }
 
-    // 2. El "Matching": Actualiza el Volume ID obtenido del IBM i (CHKTAP)
-    public void actualizarVolumeId(String barcode, String volumeId) {
-        String sql = "UPDATE cintas SET volume_id = ?, ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode = ?";
+    /**
+     * Registra un movimiento de forma independiente (abre su propia conexión).
+     * Útil para eventos que NO modifican la tabla "cintas" en este DAO,
+     * como el movimiento físico del robot TS4300.
+     */
+    public void registrarMovimiento(String barcode, String tipoMovimiento, String observacion) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            registrarMovimiento(conn, barcode, tipoMovimiento, observacion, null);
+            System.out.println("Movimiento registrado: " + barcode + " -> " + tipoMovimiento);
+        } catch (SQLException e) {
+            System.err.println("Error al registrar movimiento: " + e.getMessage());
+        }
+    }
 
+    /** Lee el historial de una cinta (más reciente primero). Para la vista de trazabilidad. */
+    public List<Movimiento> listarMovimientos(String barcode) {
+        List<Movimiento> lista = new ArrayList<>();
+        String sql = "SELECT id, barcode, tipo_movimiento, fecha, observacion, comprobante_digital " +
+                "FROM movimientos WHERE barcode = ? ORDER BY fecha DESC";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, barcode);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                lista.add(new Movimiento(
+                        rs.getLong("id"),
+                        rs.getString("barcode"),
+                        rs.getString("tipo_movimiento"),
+                        rs.getTimestamp("fecha") != null ? rs.getTimestamp("fecha").toLocalDateTime() : null,
+                        rs.getString("observacion"),
+                        rs.getString("comprobante_digital")
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al listar movimientos: " + e.getMessage());
+        }
+        return lista;
+    }
 
-            pstmt.setString(1, volumeId);
-            pstmt.setString(2, barcode);
+    // Helpers de transacción -----------------------------------
 
-            int filasAfectadas = pstmt.executeUpdate();
-            if (filasAfectadas > 0) {
-                System.out.println("PostgreSQL actualizado: " + barcode + " -> " + volumeId);
-            } else {
-                System.err.println("No se encontró el barcode: " + barcode);
+    private void rollback(Connection conn) {
+        if (conn != null) {
+            try {
+                conn.rollback();
+            } catch (SQLException ex) {
+                System.err.println("Error en rollback: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void cerrar(Connection conn) {
+        if (conn != null) {
+            try {
+                conn.setAutoCommit(true);
+                conn.close();
+            } catch (SQLException ex) {
+                System.err.println("Error al cerrar conexión: " + ex.getMessage());
+            }
+        }
+    }
+
+    // ==========================================================
+    // 1. Registro inicial (cuando entra la cinta al armario)
+    // ==========================================================
+    public void registrarCinta(String barcode, String volumeId, int clienteId, String tecnologia) {
+        String sql = "INSERT INTO cintas (barcode, volume_id, cliente_id, ubicacion, tecnologia) " +
+                "VALUES (?, ?, ?, 'ARMARIO', ?)";
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false); // Inicia transacción
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, barcode);
+                pstmt.setString(2, volumeId);
+                pstmt.setInt(3, clienteId);
+                pstmt.setString(4, tecnologia);
+                pstmt.executeUpdate();
             }
 
+            // La cinta ya existe dentro de la transacción, así que la FK del movimiento es válida
+            registrarMovimiento(conn, barcode, "ALTA",
+                    "Cinta registrada en ARMARIO (" + tecnologia + ")", null);
+
+            conn.commit();
+            System.out.println("Cinta " + barcode + " registrada con éxito.");
         } catch (SQLException e) {
-            System.err.println("Error al actualizar en Postgres: " + e.getMessage());
+            rollback(conn);
+            System.err.println("Error al registrar: " + e.getMessage());
+        } finally {
+            cerrar(conn);
         }
     }
 
-    // 3. Listado para la Interfaz Web (Atopa Dashboard)
+    // ==========================================================
+    // 2. El "Matching": Actualiza el Volume ID obtenido del IBM i (CHKTAP)
+    // ==========================================================
+    public void actualizarVolumeId(String barcode, String volumeId) {
+        String sql = "UPDATE cintas SET volume_id = ?, ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            int filasAfectadas;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, volumeId);
+                pstmt.setString(2, barcode);
+                filasAfectadas = pstmt.executeUpdate();
+            }
+
+            if (filasAfectadas > 0) {
+                registrarMovimiento(conn, barcode, "RELACION",
+                        "Volume ID relacionado: " + volumeId, null);
+                conn.commit();
+                System.out.println("PostgreSQL actualizado: " + barcode + " -> " + volumeId);
+            } else {
+                rollback(conn);
+                System.err.println("No se encontró el barcode: " + barcode);
+            }
+        } catch (SQLException e) {
+            rollback(conn);
+            System.err.println("Error al actualizar en Postgres: " + e.getMessage());
+        } finally {
+            cerrar(conn);
+        }
+    }
+
+    // ==========================================================
+    // 3. Listado para la Interfaz Web (Atopa Dashboard) - SOLO LECTURA
+    // ==========================================================
     public List<Cinta> filtrarCintas(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
@@ -87,8 +198,7 @@ public class CintaDAO {
         return lista;
     }
 
-    // 1. Método para filtrar por cliente (Para el selector de la derecha)
-    // 1. Método para listar todas (Actualizado con Tecnología)
+    // 1. Método para listar todas (Actualizado con Tecnología) - SOLO LECTURA
     public List<Cinta> listarTodas() {
         List<Cinta> lista = new ArrayList<>();
         String sql = "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
@@ -105,7 +215,7 @@ public class CintaDAO {
                         rs.getString("ubicacion"),
                         rs.getString("estado"),
                         rs.getString("cliente"),
-                        rs.getString("tecnologia") // Este es el 6to argumento que faltaba
+                        rs.getString("tecnologia")
                 ));
             }
         } catch (SQLException e) {
@@ -114,7 +224,7 @@ public class CintaDAO {
         return lista;
     }
 
-    // 2. Tu método filtrarPorCliente (Corregido según tu captura de pantalla)
+    // 2. filtrarPorCliente - SOLO LECTURA
     public List<Cinta> filtrarPorCliente(int clienteId) {
         List<Cinta> lista = new ArrayList<>();
         String sql = "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
@@ -134,7 +244,7 @@ public class CintaDAO {
                         rs.getString("ubicacion"),
                         rs.getString("estado"),
                         rs.getString("cliente"),
-                        rs.getString("tecnologia") //Agregado para cumplir los 6 argumentos
+                        rs.getString("tecnologia")
                 ));
             }
         } catch (SQLException e) {
@@ -143,27 +253,41 @@ public class CintaDAO {
         return lista;
     }
 
-    // 2. Método para reiniciar la cinta (Vuelve a estado PENDIENTE)
+    // ==========================================================
+    // 4. Reiniciar la cinta (Vuelve a estado PENDIENTE)
+    // ==========================================================
     public void reiniciarCinta(String barcode) {
-        // Ponemos el volume_id de nuevo en 'PENDIENTE' para permitir un nuevo matching
         String sql = "UPDATE cintas SET volume_id = 'PENDIENTE', ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            int filas;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, barcode);
+                filas = pstmt.executeUpdate();
+            }
 
-            pstmt.setString(1, barcode);
-            int filas = pstmt.executeUpdate();
             if (filas > 0) {
+                registrarMovimiento(conn, barcode, "REINICIO",
+                        "Cinta reiniciada, lista para nuevo matching", null);
+                conn.commit();
                 System.out.println("Cinta " + barcode + " reiniciada. Lista para nuevo matching.");
+            } else {
+                rollback(conn);
             }
         } catch (SQLException e) {
+            rollback(conn);
             System.err.println("Error al reiniciar cinta: " + e.getMessage());
+        } finally {
+            cerrar(conn);
         }
     }
 
+    // Recientes - SOLO LECTURA
     public List<Cinta> listarRecientes(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
-        // SQL con LIMIT 5 y ordenado por los últimos cambios
         StringBuilder sql = new StringBuilder(
                 "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE 1=1 "
@@ -172,7 +296,7 @@ public class CintaDAO {
         if (clienteId != null) sql.append(" AND c.cliente_id = ?");
         if (tecnologia != null) sql.append(" AND c.tecnologia = ?");
 
-        sql.append(" ORDER BY c.ultima_modificacion DESC LIMIT 5"); // El secreto de la semana
+        sql.append(" ORDER BY c.ultima_modificacion DESC LIMIT 5");
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
@@ -185,41 +309,116 @@ public class CintaDAO {
                         rs.getString("ubicacion"), rs.getString("estado"),
                         rs.getString("cliente"), rs.getString("tecnologia")));
             }
-        } catch (SQLException e) { System.err.println("Error en recientes: " + e.getMessage()); }
+        } catch (SQLException e) {
+            System.err.println("Error en recientes: " + e.getMessage());
+        }
         return lista;
-
     }
 
-    // Para marcar o desmarcar una cinta como semanal
-    public void actualizarEstadoSemanal(String barcode, boolean esSemanal) {
-        String sql = "UPDATE cintas SET es_semanal = ? WHERE barcode = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setBoolean(1, esSemanal);
-            pstmt.setString(2, barcode);
-            pstmt.executeUpdate();
+    // ==========================================================
+    // 5. Marcar/desmarcar semanal (con día específico)
+    // ==========================================================
+    public void asignarDiaSemanal(String barcode, String dia) {
+        String sql = "UPDATE cintas SET es_semanal = TRUE, dia_semana = ? WHERE barcode = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            int filas;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, dia);
+                pstmt.setString(2, barcode);
+                filas = pstmt.executeUpdate();
+            }
+
+            if (filas > 0) {
+                registrarMovimiento(conn, barcode, "MARCA_SEMANAL",
+                        "Marcada como semanal (" + dia + ")", null);
+                conn.commit();
+            } else {
+                rollback(conn);
+            }
         } catch (SQLException e) {
-            System.err.println("Error al actualizar estado semanal: " + e.getMessage());
+            rollback(conn);
+            System.err.println("Error al asignar día: " + e.getMessage());
+        } finally {
+            cerrar(conn);
         }
     }
 
-    // Para listar solo las que tú seleccionaste
+    public void quitarDiaSemanal(String barcode) {
+        String sql = "UPDATE cintas SET es_semanal = FALSE, dia_semana = NULL WHERE barcode = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            int filas;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, barcode);
+                filas = pstmt.executeUpdate();
+            }
+
+            if (filas > 0) {
+                registrarMovimiento(conn, barcode, "DESMARCA_SEMANAL",
+                        "Quitada de semanales", null);
+                conn.commit();
+            } else {
+                rollback(conn);
+            }
+        } catch (SQLException e) {
+            rollback(conn);
+            System.err.println("Error al quitar día: " + e.getMessage());
+        } finally {
+            cerrar(conn);
+        }
+    }
+
+    // Compatibilidad: marcar/desmarcar semanal sin día (mantiene tu firma anterior)
+    public void actualizarEstadoSemanal(String barcode, boolean esSemanal) {
+        String sql = "UPDATE cintas SET es_semanal = ? WHERE barcode = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            int filas;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setBoolean(1, esSemanal);
+                pstmt.setString(2, barcode);
+                filas = pstmt.executeUpdate();
+            }
+
+            if (filas > 0) {
+                registrarMovimiento(conn, barcode,
+                        esSemanal ? "MARCA_SEMANAL" : "DESMARCA_SEMANAL",
+                        esSemanal ? "Marcada como semanal" : "Quitada de semanales", null);
+                conn.commit();
+            } else {
+                rollback(conn);
+            }
+        } catch (SQLException e) {
+            rollback(conn);
+            System.err.println("Error al actualizar estado semanal: " + e.getMessage());
+        } finally {
+            cerrar(conn);
+        }
+    }
+
+    // Listar semanales - SOLO LECTURA
     public List<Cinta> listarSemanalesManual(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
 
-        // 1. Iniciamos la consulta base
         StringBuilder sql = new StringBuilder(
                 "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, c.dia_semana " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id " +
                         "WHERE c.es_semanal = TRUE"
         );
 
-        // 2. Si se mandó un clienteId en el filtro, lo agregamos al SQL
         if (clienteId != null) {
             sql.append(" AND c.cliente_id = ?");
         }
-
-        // 3. (Opcional) Si también quieres que filtre por tecnología
         if (tecnologia != null && !tecnologia.isEmpty()) {
             sql.append(" AND c.tecnologia = ?");
         }
@@ -228,8 +427,6 @@ public class CintaDAO {
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
             int paramIndex = 1;
-
-            // Reemplazamos los "?" de forma dinámica
             if (clienteId != null) {
                 pstmt.setInt(paramIndex++, clienteId);
             }
@@ -253,68 +450,78 @@ public class CintaDAO {
         return lista;
     }
 
-    // ==========================================
-    // NUEVO: Método para procesar el retiro de múltiples cintas
-    // ==========================================
+    // ==========================================================
+    // 6. Retiro de múltiples cintas (en una sola transacción)
+    // ==========================================================
     public void retirarCintas(List<String> barcodes) {
         if (barcodes == null || barcodes.isEmpty()) return;
 
-        // Construimos un SQL dinámico con tantos "?" como cintas seleccionadas
-        StringBuilder sql = new StringBuilder("UPDATE cintas SET ubicacion = 'RETIRADO', ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode IN (");
+        StringBuilder sql = new StringBuilder(
+                "UPDATE cintas SET ubicacion = 'RETIRADO', ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode IN (");
         for (int i = 0; i < barcodes.size(); i++) {
             sql.append("?");
             if (i < barcodes.size() - 1) sql.append(",");
         }
         sql.append(")");
 
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
 
-            // Asignamos cada barcode a su respectivo "?"
-            for (int i = 0; i < barcodes.size(); i++) {
-                pstmt.setString(i + 1, barcodes.get(i));
+            int filasAfectadas;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+                for (int i = 0; i < barcodes.size(); i++) {
+                    pstmt.setString(i + 1, barcodes.get(i));
+                }
+                filasAfectadas = pstmt.executeUpdate();
             }
 
-            int filasAfectadas = pstmt.executeUpdate();
-            System.out.println("Éxito: Se han retirado " + filasAfectadas + " cintas en la base de datos.");
+            // Un movimiento de RETIRO por cada cinta afectada
+            for (String barcode : barcodes) {
+                registrarMovimiento(conn, barcode, "RETIRO",
+                        "Cinta retirada del inventario", null);
+            }
 
+            conn.commit();
+            System.out.println("Éxito: Se han retirado " + filasAfectadas + " cintas en la base de datos.");
         } catch (SQLException e) {
+            rollback(conn);
             System.err.println("Error al procesar el retiro masivo: " + e.getMessage());
+        } finally {
+            cerrar(conn);
         }
     }
 
-    // Método para cambiar la ubicación de una sola cinta desde el Inventario
+    // ==========================================================
+    // 7. Cambiar la ubicación de una sola cinta (Inventario)
+    // ==========================================================
     public void actualizarUbicacion(String barcode, String nuevaUbicacion) {
         String sql = "UPDATE cintas SET ubicacion = ?, ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, nuevaUbicacion);
-            pstmt.setString(2, barcode);
-            pstmt.executeUpdate();
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            int filas;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, nuevaUbicacion);
+                pstmt.setString(2, barcode);
+                filas = pstmt.executeUpdate();
+            }
+
+            if (filas > 0) {
+                registrarMovimiento(conn, barcode, "CAMBIO_UBICACION",
+                        "Nueva ubicación: " + nuevaUbicacion, null);
+                conn.commit();
+            } else {
+                rollback(conn);
+            }
         } catch (SQLException e) {
+            rollback(conn);
             System.err.println("Error al actualizar ubicación: " + e.getMessage());
+        } finally {
+            cerrar(conn);
         }
     }
-
-    // Método para asignar un día específico
-    public void asignarDiaSemanal(String barcode, String dia) {
-        String sql = "UPDATE cintas SET es_semanal = TRUE, dia_semana = ? WHERE barcode = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, dia);
-            pstmt.setString(2, barcode);
-            pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println("Error al asignar día: " + e.getMessage()); }
-    }
-
-    // Método para vaciar la casilla
-    public void quitarDiaSemanal(String barcode) {
-        String sql = "UPDATE cintas SET es_semanal = FALSE, dia_semana = NULL WHERE barcode = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, barcode);
-            pstmt.executeUpdate();
-        } catch (SQLException e) { System.err.println("Error al quitar día: " + e.getMessage()); }
-    }
-
 }

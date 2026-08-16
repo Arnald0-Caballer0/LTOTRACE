@@ -5,6 +5,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import com.ibm.as400.access.AS400;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 
 import java.util.HashMap;
 import java.util.List;
@@ -119,10 +121,13 @@ public class CintaController {
     public Map<String, String> moverCintaRobot(@RequestParam("barcode") String barcode) {
         Map<String, String> respuesta = new HashMap<>();
 
-        // Llamamos al servicio que acabas de configurar
+        // Llamamos al servicio que mueve la cinta en el robot
         String resultado = libraryService.moverCinta(barcode);
 
         if ("SUCCESS".equals(resultado)) {
+            // Registramos el movimiento físico en la bitácora de trazabilidad
+            cintaDAO.registrarMovimiento(barcode, "MOVIMIENTO_FISICO", "Movimiento físico en robot TS4300");
+
             respuesta.put("status", "success");
             respuesta.put("mensaje", "Comando de movimiento enviado al robot TS4300.");
         } else {
@@ -133,5 +138,22 @@ public class CintaController {
 
         return respuesta;
     }
+    // ==========================================
+// NUEVO ENDPOINT: Historial (trazabilidad) de una cinta
+// ==========================================
+    @GetMapping("/api/historial/{barcode}")
+    @ResponseBody
+    public List<Map<String, String>> historialCinta(@PathVariable("barcode") String barcode) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        List<Map<String, String>> salida = new ArrayList<>();
 
+        for (Movimiento m : cintaDAO.listarMovimientos(barcode)) {
+            Map<String, String> fila = new HashMap<>();
+            fila.put("tipo", m.getTipoMovimiento());
+            fila.put("fecha", m.getFecha() != null ? m.getFecha().format(fmt) : "");
+            fila.put("observacion", m.getObservacion() != null ? m.getObservacion() : "");
+            salida.add(fila);
+        }
+        return salida;
+    }
 }
