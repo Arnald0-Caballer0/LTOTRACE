@@ -152,6 +152,7 @@ public class CintaController {
             fila.put("tipo", m.getTipoMovimiento());
             fila.put("fecha", m.getFecha() != null ? m.getFecha().format(fmt) : "");
             fila.put("observacion", m.getObservacion() != null ? m.getObservacion() : "");
+            fila.put("usuario", m.getUsuario() != null ? m.getUsuario() : "");
             salida.add(fila);
         }
         return salida;

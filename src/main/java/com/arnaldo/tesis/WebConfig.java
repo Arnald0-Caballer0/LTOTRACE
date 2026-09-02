@@ -20,6 +20,7 @@ public class WebConfig implements WebMvcConfigurer {
                         "/logout",
                         "/css/**",
                         "/js/**",
+                        "/img/**",               // <-- imágenes (fondo del login, etc.)
                         "/images/**",
                         "/webjars/**",
                         "/favicon.ico",
