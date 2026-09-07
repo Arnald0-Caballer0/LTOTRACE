@@ -7,10 +7,13 @@ import org.springframework.web.bind.annotation.*;
 import com.ibm.as400.access.AS400;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 
 @Controller
 public class CintaController {
@@ -20,6 +23,8 @@ public class CintaController {
     private ClienteDAO clienteDAO;
     @Autowired
     private LibraryService libraryService;
+    @Autowired
+    private ComprobanteService comprobanteService;
 
     @GetMapping("/")
     public String index(@RequestParam(name = "clienteId", required = false) Integer clienteId,
@@ -79,21 +84,17 @@ public class CintaController {
                                 @RequestParam(value = "dia", required = false) String dia,
                                 @RequestParam(value = "clienteId", required = false) Integer clienteId,
                                 @RequestParam(value = "tecnologia", required = false) String tecnologia) {
-        // Usamos el nuevo método del DAO
         cintaDAO.asignarDiaSemanal(barcode, dia);
-
-        // ... (tu lógica de redirección se mantiene igual, redirigiendo a "/")
-        return "redirect:/"; // O como lo tengas actualmente
+        // Conservamos el cliente/tecnología para que el panel semanal no se esconda
+        return "redirect:/" + construirParametros(clienteId, tecnologia);
     }
 
     @GetMapping("/desmarcar-semanal/{id}")
     public String desmarcarSemanal(@PathVariable("id") String barcode,
                                    @RequestParam(value = "clienteId", required = false) Integer clienteId,
                                    @RequestParam(value = "tecnologia", required = false) String tecnologia) {
-        // Usamos el nuevo método para limpiar
         cintaDAO.quitarDiaSemanal(barcode);
-
-        return "redirect:/";
+        return "redirect:/" + construirParametros(clienteId, tecnologia);
     }
 
     // Método auxiliar para no repetir código
@@ -121,17 +122,20 @@ public class CintaController {
     public Map<String, String> moverCintaRobot(@RequestParam("barcode") String barcode) {
         Map<String, String> respuesta = new HashMap<>();
 
-        // Llamamos al servicio que mueve la cinta en el robot
         String resultado = libraryService.moverCinta(barcode);
 
-        if ("SUCCESS".equals(resultado)) {
-            // Registramos el movimiento físico en la bitácora de trazabilidad
-            cintaDAO.registrarMovimiento(barcode, "MOVIMIENTO_FISICO", "Movimiento físico en robot TS4300");
-
+        if (resultado != null && resultado.startsWith("SUCCESS")) {
+            if ("SUCCESS_LOAD".equals(resultado)) {
+                // Carga en el drive = un uso: sube el contador y registra MONTAJE
+                cintaDAO.registrarMontaje(barcode);
+                respuesta.put("mensaje", "Cinta montada en el drive TS4300.");
+            } else {
+                // Descarga del drive: solo registra el movimiento
+                cintaDAO.registrarMovimiento(barcode, "DESMONTAJE", "Cinta descargada del drive TS4300");
+                respuesta.put("mensaje", "Cinta descargada del drive TS4300.");
+            }
             respuesta.put("status", "success");
-            respuesta.put("mensaje", "Comando de movimiento enviado al robot TS4300.");
         } else {
-            // Si hubo un error de seguridad o librería llena, lo devolvemos
             respuesta.put("status", "error");
             respuesta.put("mensaje", resultado);
         }
@@ -157,4 +161,5 @@ public class CintaController {
         }
         return salida;
     }
+
 }

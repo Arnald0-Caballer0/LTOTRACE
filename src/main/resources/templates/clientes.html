@@ -45,8 +45,8 @@
           <option value="" class="text-dark">Seleccione un Cliente</option>
           <option th:each="cliente : ${listaClientes}"
                   th:value="${cliente.id}" th:text="${cliente.nombre}"
-                  th:data-encargado="${cliente.encargado}" th:data-telefono="${cliente.telefono}" th:data-correo="${cliente.email}" class="text-dark">
-          </option>
+                  th:data-encargado="${cliente.encargado}" th:data-telefono="${cliente.telefono}" th:data-correo="${cliente.email}"
+                  th:data-promedio="${cliente.promedioGbBackup}" th:data-dias="${cliente.diasEntreBackups}" class="text-dark">          </option>
         </select>
         <button id="btnNuevoCliente" class="btn btn-success shadow-sm" title="Crear Nuevo Cliente"><i class="bi bi-plus-lg fw-bold"></i></button>
       </div>
@@ -273,7 +273,16 @@
             <input type="email" id="formDatosCorreo" class="form-control">
           </div>
         </div>
-
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small">GB promedio por backup</label>
+            <input type="number" min="0" id="formDatosPromedio" class="form-control" placeholder="Ej: 800">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-bold small">Días entre backups</label>
+            <input type="number" min="0" id="formDatosDias" class="form-control" placeholder="Ej: 5">
+          </div>
+        </div>
         <button id="btnGuardarBd" class="btn btn-success mt-3 w-100 fw-bold py-2 shadow-sm">
           <i class="bi bi-save"></i> GUARDAR DATOS
         </button>
@@ -383,6 +392,9 @@
                           document.getElementById('formDatosEncargado').value = nombreEncargado !== "-" ? nombreEncargado : "";
                           document.getElementById('formDatosTelefono').value = datoTelefono.innerText !== "-" ? datoTelefono.innerText : "";
                           document.getElementById('formDatosEmail').value = datoCorreo.innerText !== "-" ? datoCorreo.innerText : "";
+                        const optSel = clienteSelect.options[clienteSelect.selectedIndex];
+                        document.getElementById('formDatosPromedio').value = optSel.getAttribute('data-promedio') || '';
+                        document.getElementById('formDatosDias').value = optSel.getAttribute('data-dias') || '';
                       }
 
                       const btnGuardarBd = document.getElementById('btnGuardarBd');
@@ -396,8 +408,9 @@
                                   telefono: document.getElementById('formDatosTelefono').value,
                                   email: document.getElementById('formDatosEmail').value,
                                   correo: document.getElementById('formDatosCorreo').value,
-                                  fechaRegistro: document.getElementById('formDatosFecha').value || null
-                              };
+                                fechaRegistro: document.getElementById('formDatosFecha').value || null,
+                                promedioGbBackup: parseInt(document.getElementById('formDatosPromedio').value) || 0,
+                                diasEntreBackups: parseInt(document.getElementById('formDatosDias').value) || 0                              };
 
                               fetch('/api/guardar-cliente', {
                                   method: 'POST',

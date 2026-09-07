@@ -252,9 +252,12 @@
             </div>
 
             <div class="scrollable-content">
-                <p class="section-title text-uppercase">Inventario Maestro (Archivo)</p>
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 pb-5"> <div class="col" th:each="cinta : ${cintas}">
-                    <div class="card h-100 shadow-sm tape-card border-0" th:classappend="'border-' + ${cinta.tecnologia}">
+                <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
+                    <p class="section-title text-uppercase mb-0">Inventario Maestro (Archivo)</p>
+                    <input type="text" id="buscadorCintas" class="form-control form-control-sm"
+                           style="max-width:280px" placeholder="Buscar barcode, cliente o Volume ID...">
+                </div>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 pb-5" id="gridInventario"> <div class="col" th:each="cinta : ${cintas}">                    <div class="card h-100 shadow-sm tape-card border-0" th:classappend="'border-' + ${cinta.tecnologia}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="badge tech-badge px-2" th:text="${cinta.tecnologia}"></span>
@@ -264,6 +267,30 @@
                             <div class="volume-box text-center mb-3 py-2">
                                 <small class="text-muted d-block small mb-1">VOLUME ID (IBMi)</small>
                                 <div th:text="${cinta.volumeId}" th:class="${cinta.volumeId == 'PENDIENTE'} ? 'text-danger fw-bold h5 mb-0' : 'text-primary fw-bold h5 mb-0'"></div>
+                            </div>
+                            <!-- Desgaste y llenado -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Desgaste</span>
+                                    <span class="fw-bold" th:text="${cinta.porcentajeDesgaste} + '%'"></span>
+                                </div>
+                                <div class="progress" style="height:8px;">
+                                    <div class="progress-bar" th:classappend="${cinta.colorDesgaste}"
+                                         role="progressbar" th:style="'width:' + ${cinta.porcentajeDesgaste} + '%'"></div>
+                                </div>
+                                <div class="small text-muted mt-1" th:text="${cinta.textoDesgaste}"></div>
+
+                                <div class="d-flex justify-content-between small mb-1 mt-2">
+                                    <span class="text-muted">Llenado</span>
+                                    <span class="fw-bold" th:text="${cinta.llenadoCalculable} ? (${cinta.porcentajeLlenado} + '%') : '—'"></span>
+                                </div>
+                                <div class="progress" style="height:8px;">
+                                    <div class="progress-bar" th:classappend="${cinta.colorLlenado}"
+                                         role="progressbar" th:style="'width:' + ${cinta.porcentajeLlenado} + '%'"></div>
+                                </div>
+                                <div class="small mt-1"
+                                     th:classappend="${cinta.llenadoCalculable} ? 'text-muted' : 'text-warning'"
+                                     th:text="${cinta.textoLlenado}"></div>
                             </div>
                             <div class="d-grid gap-2">
                                 <a th:if="${cinta.volumeId == 'PENDIENTE'}" th:href="@{/relacionar/{id}(id=${cinta.barcode})}" class="btn btn-dark btn-sm fw-bold">Relacionar Nombre</a>
@@ -293,8 +320,10 @@
                 <p class="small text-muted mb-3">Seleccione una cinta de su inventario general para asignarla a este espacio en la semana.</p>
                 <select id="selectCintaModal" class="form-select border-secondary fw-bold shadow-sm" required>
                     <option value="">-- Seleccione una cinta --</option>
-                    <option th:each="c : ${cintas}" th:value="${c.barcode}" th:text="${c.barcode} + ' (' + ${c.tecnologia} + ')'"></option>
-                </select>
+                    <option th:each="c : ${cintas}"
+                            th:if="${#strings.toUpperCase(c.ubicacion) != 'ARMARIO' and #strings.toUpperCase(c.ubicacion) != 'RETIRADO'}"
+                            th:value="${c.barcode}"
+                            th:text="${c.barcode} + ' (' + ${c.tecnologia} + ')'"></option>                </select>
             </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
@@ -540,9 +569,25 @@
             case 'REINICIO': return 'bg-secondary';
             case 'MARCA_SEMANAL': return 'bg-dark';
             case 'DESMARCA_SEMANAL': return 'bg-light text-dark border';
+            case 'MONTAJE': return 'bg-info text-dark';
+            case 'DESMONTAJE': return 'bg-secondary';
             default: return 'bg-secondary';
         }
     }
+</script>
+
+// BUSCADOR DE CINTAS
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('buscadorCintas');
+        if (!input) return;
+        input.addEventListener('input', function () {
+            const q = this.value.toLowerCase().trim();
+            document.querySelectorAll('#gridInventario > .col').forEach(function (col) {
+                col.style.display = col.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        });
+    });
 </script>
 </body>
 </html>

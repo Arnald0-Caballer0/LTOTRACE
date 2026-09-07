@@ -17,11 +17,7 @@ public class CintaDAO {
     // NÚCLEO DE TRAZABILIDAD: registro de movimientos
     // ==========================================================
 
-    /**
-     * Inserta un movimiento usando una conexión YA ABIERTA.
-     * Se usa dentro de una transacción, junto con el cambio en "cintas",
-     * para que ambos se confirmen (commit) o se deshagan (rollback) juntos.
-     */
+    /** Inserta un movimiento usando una conexión YA ABIERTA (dentro de una transacción). */
     private void registrarMovimiento(Connection conn, String barcode, String tipoMovimiento,
                                      String observacion, String comprobanteDigital) throws SQLException {
         String sql = "INSERT INTO movimientos (barcode, tipo_movimiento, observacion, comprobante_digital, usuario) " +
@@ -36,11 +32,7 @@ public class CintaDAO {
         }
     }
 
-    /**
-     * Registra un movimiento de forma independiente (abre su propia conexión).
-     * Útil para eventos que NO modifican la tabla "cintas" en este DAO,
-     * como el movimiento físico del robot TS4300.
-     */
+    /** Registra un movimiento de forma independiente (abre su propia conexión). */
     public void registrarMovimiento(String barcode, String tipoMovimiento, String observacion) {
         try (Connection conn = DatabaseConnection.getConnection()) {
             registrarMovimiento(conn, barcode, tipoMovimiento, observacion, null);
@@ -50,7 +42,7 @@ public class CintaDAO {
         }
     }
 
-    /** Lee el historial de una cinta (más reciente primero). Para la vista de trazabilidad. */
+    /** Lee el historial de una cinta (más reciente primero). */
     public List<Movimiento> listarMovimientos(String barcode) {
         List<Movimiento> lista = new ArrayList<>();
         String sql = "SELECT id, barcode, tipo_movimiento, fecha, observacion, comprobante_digital, usuario " +
@@ -80,22 +72,53 @@ public class CintaDAO {
 
     private void rollback(Connection conn) {
         if (conn != null) {
-            try {
-                conn.rollback();
-            } catch (SQLException ex) {
-                System.err.println("Error en rollback: " + ex.getMessage());
-            }
+            try { conn.rollback(); } catch (SQLException ex) { System.err.println("Error en rollback: " + ex.getMessage()); }
         }
     }
 
     private void cerrar(Connection conn) {
         if (conn != null) {
-            try {
-                conn.setAutoCommit(true);
-                conn.close();
-            } catch (SQLException ex) {
-                System.err.println("Error al cerrar conexión: " + ex.getMessage());
+            try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) { System.err.println("Error al cerrar conexión: " + ex.getMessage()); }
+        }
+    }
+
+    // ==========================================================
+    // DESGASTE Y LLENADO: registrar un montaje (un "uso")
+    // ==========================================================
+    /**
+     * Se llama cuando la cinta se CARGA en el drive (un uso real).
+     * Sube el contador de usos, fija la fecha de primer uso si no existía,
+     * y registra el movimiento MONTAJE, todo en una sola transacción.
+     */
+    public void registrarMontaje(String barcode) {
+        String sql = "UPDATE cintas SET " +
+                "contador_usos = COALESCE(contador_usos, 0) + 1, " +
+                "fecha_primer_uso = COALESCE(fecha_primer_uso, CURRENT_TIMESTAMP), " +
+                "ultima_modificacion = CURRENT_TIMESTAMP " +
+                "WHERE barcode = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            int filas;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, barcode);
+                filas = pstmt.executeUpdate();
             }
+
+            if (filas > 0) {
+                registrarMovimiento(conn, barcode, "MONTAJE", "Cinta montada en el drive (uso registrado)", null);
+                conn.commit();
+                System.out.println("Montaje registrado para " + barcode);
+            } else {
+                rollback(conn);
+            }
+        } catch (SQLException e) {
+            rollback(conn);
+            System.err.println("Error al registrar montaje: " + e.getMessage());
+        } finally {
+            cerrar(conn);
         }
     }
 
@@ -108,7 +131,7 @@ public class CintaDAO {
         Connection conn = null;
         try {
             conn = DatabaseConnection.getConnection();
-            conn.setAutoCommit(false); // Inicia transacción
+            conn.setAutoCommit(false);
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, barcode);
@@ -118,9 +141,7 @@ public class CintaDAO {
                 pstmt.executeUpdate();
             }
 
-            // La cinta ya existe dentro de la transacción, así que la FK del movimiento es válida
-            registrarMovimiento(conn, barcode, "ALTA",
-                    "Cinta registrada en ARMARIO (" + tecnologia + ")", null);
+            registrarMovimiento(conn, barcode, "ALTA", "Cinta registrada en ARMARIO (" + tecnologia + ")", null);
 
             conn.commit();
             System.out.println("Cinta " + barcode + " registrada con éxito.");
@@ -150,8 +171,7 @@ public class CintaDAO {
             }
 
             if (filasAfectadas > 0) {
-                registrarMovimiento(conn, barcode, "RELACION",
-                        "Volume ID relacionado: " + volumeId, null);
+                registrarMovimiento(conn, barcode, "RELACION", "Volume ID relacionado: " + volumeId, null);
                 conn.commit();
                 System.out.println("PostgreSQL actualizado: " + barcode + " -> " + volumeId);
             } else {
@@ -167,12 +187,13 @@ public class CintaDAO {
     }
 
     // ==========================================================
-    // 3. Listado para la Interfaz Web (Atopa Dashboard) - SOLO LECTURA
+    // 3. Listados para la Interfaz Web - SOLO LECTURA
     // ==========================================================
     public List<Cinta> filtrarCintas(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
-                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
+                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, " +
+                        "c.contador_usos, cl.promedio_gb_backup, cl.dias_entre_backups " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE 1=1"
         );
 
@@ -188,11 +209,16 @@ public class CintaDAO {
 
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
-                lista.add(new Cinta(
+                Cinta cinta = new Cinta(
                         rs.getString("barcode"), rs.getString("volume_id"),
                         rs.getString("ubicacion"), rs.getString("estado"),
                         rs.getString("cliente"), rs.getString("tecnologia")
-                ));
+                );
+                // Datos para desgaste y llenado
+                cinta.setContadorUsos(rs.getInt("contador_usos"));
+                cinta.setPromedioGbBackup(rs.getInt("promedio_gb_backup"));
+                cinta.setDiasEntreBackups(rs.getInt("dias_entre_backups"));
+                lista.add(cinta);
             }
         } catch (SQLException e) {
             System.err.println("Error en filtro: " + e.getMessage());
@@ -200,7 +226,7 @@ public class CintaDAO {
         return lista;
     }
 
-    // 1. Método para listar todas (Actualizado con Tecnología) - SOLO LECTURA
+
     public List<Cinta> listarTodas() {
         List<Cinta> lista = new ArrayList<>();
         String sql = "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
@@ -212,12 +238,9 @@ public class CintaDAO {
 
             while (rs.next()) {
                 lista.add(new Cinta(
-                        rs.getString("barcode"),
-                        rs.getString("volume_id"),
-                        rs.getString("ubicacion"),
-                        rs.getString("estado"),
-                        rs.getString("cliente"),
-                        rs.getString("tecnologia")
+                        rs.getString("barcode"), rs.getString("volume_id"),
+                        rs.getString("ubicacion"), rs.getString("estado"),
+                        rs.getString("cliente"), rs.getString("tecnologia")
                 ));
             }
         } catch (SQLException e) {
@@ -226,12 +249,10 @@ public class CintaDAO {
         return lista;
     }
 
-    // 2. filtrarPorCliente - SOLO LECTURA
     public List<Cinta> filtrarPorCliente(int clienteId) {
         List<Cinta> lista = new ArrayList<>();
         String sql = "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
-                "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id " +
-                "WHERE c.cliente_id = ?";
+                "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE c.cliente_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -241,12 +262,9 @@ public class CintaDAO {
 
             while (rs.next()) {
                 lista.add(new Cinta(
-                        rs.getString("barcode"),
-                        rs.getString("volume_id"),
-                        rs.getString("ubicacion"),
-                        rs.getString("estado"),
-                        rs.getString("cliente"),
-                        rs.getString("tecnologia")
+                        rs.getString("barcode"), rs.getString("volume_id"),
+                        rs.getString("ubicacion"), rs.getString("estado"),
+                        rs.getString("cliente"), rs.getString("tecnologia")
                 ));
             }
         } catch (SQLException e) {
@@ -272,8 +290,7 @@ public class CintaDAO {
             }
 
             if (filas > 0) {
-                registrarMovimiento(conn, barcode, "REINICIO",
-                        "Cinta reiniciada, lista para nuevo matching", null);
+                registrarMovimiento(conn, barcode, "REINICIO", "Cinta reiniciada, lista para nuevo matching", null);
                 conn.commit();
                 System.out.println("Cinta " + barcode + " reiniciada. Lista para nuevo matching.");
             } else {
@@ -287,7 +304,6 @@ public class CintaDAO {
         }
     }
 
-    // Recientes - SOLO LECTURA
     public List<Cinta> listarRecientes(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
@@ -297,7 +313,6 @@ public class CintaDAO {
 
         if (clienteId != null) sql.append(" AND c.cliente_id = ?");
         if (tecnologia != null) sql.append(" AND c.tecnologia = ?");
-
         sql.append(" ORDER BY c.ultima_modificacion DESC LIMIT 5");
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -326,17 +341,14 @@ public class CintaDAO {
         try {
             conn = DatabaseConnection.getConnection();
             conn.setAutoCommit(false);
-
             int filas;
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, dia);
                 pstmt.setString(2, barcode);
                 filas = pstmt.executeUpdate();
             }
-
             if (filas > 0) {
-                registrarMovimiento(conn, barcode, "MARCA_SEMANAL",
-                        "Marcada como semanal (" + dia + ")", null);
+                registrarMovimiento(conn, barcode, "MARCA_SEMANAL", "Marcada como semanal (" + dia + ")", null);
                 conn.commit();
             } else {
                 rollback(conn);
@@ -355,16 +367,13 @@ public class CintaDAO {
         try {
             conn = DatabaseConnection.getConnection();
             conn.setAutoCommit(false);
-
             int filas;
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, barcode);
                 filas = pstmt.executeUpdate();
             }
-
             if (filas > 0) {
-                registrarMovimiento(conn, barcode, "DESMARCA_SEMANAL",
-                        "Quitada de semanales", null);
+                registrarMovimiento(conn, barcode, "DESMARCA_SEMANAL", "Quitada de semanales", null);
                 conn.commit();
             } else {
                 rollback(conn);
@@ -377,21 +386,18 @@ public class CintaDAO {
         }
     }
 
-    // Compatibilidad: marcar/desmarcar semanal sin día (mantiene tu firma anterior)
     public void actualizarEstadoSemanal(String barcode, boolean esSemanal) {
         String sql = "UPDATE cintas SET es_semanal = ? WHERE barcode = ?";
         Connection conn = null;
         try {
             conn = DatabaseConnection.getConnection();
             conn.setAutoCommit(false);
-
             int filas;
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setBoolean(1, esSemanal);
                 pstmt.setString(2, barcode);
                 filas = pstmt.executeUpdate();
             }
-
             if (filas > 0) {
                 registrarMovimiento(conn, barcode,
                         esSemanal ? "MARCA_SEMANAL" : "DESMARCA_SEMANAL",
@@ -408,33 +414,22 @@ public class CintaDAO {
         }
     }
 
-    // Listar semanales - SOLO LECTURA
     public List<Cinta> listarSemanalesManual(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
-
         StringBuilder sql = new StringBuilder(
                 "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, c.dia_semana " +
-                        "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id " +
-                        "WHERE c.es_semanal = TRUE"
+                        "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE c.es_semanal = TRUE"
         );
 
-        if (clienteId != null) {
-            sql.append(" AND c.cliente_id = ?");
-        }
-        if (tecnologia != null && !tecnologia.isEmpty()) {
-            sql.append(" AND c.tecnologia = ?");
-        }
+        if (clienteId != null) sql.append(" AND c.cliente_id = ?");
+        if (tecnologia != null && !tecnologia.isEmpty()) sql.append(" AND c.tecnologia = ?");
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
             int paramIndex = 1;
-            if (clienteId != null) {
-                pstmt.setInt(paramIndex++, clienteId);
-            }
-            if (tecnologia != null && !tecnologia.isEmpty()) {
-                pstmt.setString(paramIndex++, tecnologia);
-            }
+            if (clienteId != null) pstmt.setInt(paramIndex++, clienteId);
+            if (tecnologia != null && !tecnologia.isEmpty()) pstmt.setString(paramIndex++, tecnologia);
 
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
@@ -479,10 +474,8 @@ public class CintaDAO {
                 filasAfectadas = pstmt.executeUpdate();
             }
 
-            // Un movimiento de RETIRO por cada cinta afectada
             for (String barcode : barcodes) {
-                registrarMovimiento(conn, barcode, "RETIRO",
-                        "Cinta retirada del inventario", null);
+                registrarMovimiento(conn, barcode, "RETIRO", "Cinta retirada del inventario", null);
             }
 
             conn.commit();
@@ -504,17 +497,14 @@ public class CintaDAO {
         try {
             conn = DatabaseConnection.getConnection();
             conn.setAutoCommit(false);
-
             int filas;
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, nuevaUbicacion);
                 pstmt.setString(2, barcode);
                 filas = pstmt.executeUpdate();
             }
-
             if (filas > 0) {
-                registrarMovimiento(conn, barcode, "CAMBIO_UBICACION",
-                        "Nueva ubicación: " + nuevaUbicacion, null);
+                registrarMovimiento(conn, barcode, "CAMBIO_UBICACION", "Nueva ubicación: " + nuevaUbicacion, null);
                 conn.commit();
             } else {
                 rollback(conn);
@@ -526,4 +516,38 @@ public class CintaDAO {
             cerrar(conn);
         }
     }
+
+    // Trae las cintas indicadas (para armar el comprobante de retiro)
+    public List<Cinta> buscarPorBarcodes(List<String> barcodes) {
+        List<Cinta> lista = new ArrayList<>();
+        if (barcodes == null || barcodes.isEmpty()) return lista;
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
+                        "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE c.barcode IN (");
+        for (int i = 0; i < barcodes.size(); i++) {
+            sql.append("?");
+            if (i < barcodes.size() - 1) sql.append(",");
+        }
+        sql.append(") ORDER BY c.barcode");
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < barcodes.size(); i++) {
+                pstmt.setString(i + 1, barcodes.get(i));
+            }
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                lista.add(new Cinta(
+                        rs.getString("barcode"), rs.getString("volume_id"),
+                        rs.getString("ubicacion"), rs.getString("estado"),
+                        rs.getString("cliente"), rs.getString("tecnologia")
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error en buscarPorBarcodes: " + e.getMessage());
+        }
+        return lista;
+    }
+
 }

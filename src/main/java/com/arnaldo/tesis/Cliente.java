@@ -27,6 +27,13 @@ public class Cliente {
     @Column(name = "fecha_registro")
     private LocalDate fechaRegistro;
 
+    // --- NUEVO: datos para estimar el llenado de las cintas ---
+    @Column(name = "promedio_gb_backup")
+    private Integer promedioGbBackup = 0;   // GB que escribe este cliente por backup
+
+    @Column(name = "dias_entre_backups")
+    private Integer diasEntreBackups = 0;   // Cada cuántos días hace backup
+
     // Constructor vacío
     public Cliente() {}
 
@@ -51,4 +58,10 @@ public class Cliente {
 
     public LocalDate getFechaRegistro() { return fechaRegistro; }
     public void setFechaRegistro(LocalDate fechaRegistro) { this.fechaRegistro = fechaRegistro; }
+
+    public Integer getPromedioGbBackup() { return promedioGbBackup; }
+    public void setPromedioGbBackup(Integer promedioGbBackup) { this.promedioGbBackup = promedioGbBackup; }
+
+    public Integer getDiasEntreBackups() { return diasEntreBackups; }
+    public void setDiasEntreBackups(Integer diasEntreBackups) { this.diasEntreBackups = diasEntreBackups; }
 }

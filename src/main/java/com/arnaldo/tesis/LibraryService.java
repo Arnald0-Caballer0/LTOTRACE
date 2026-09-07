@@ -189,17 +189,18 @@ public class LibraryService {
 
             // 3. LÓGICA DE MOVIMIENTO
             String cintaActualEnDrive = consultarCintaEnDrive1();
-            // Manejamos las distintas formas en que tu método puede decir que está vacío
             boolean driveVacio = (cintaActualEnDrive == null || cintaActualEnDrive.trim().isEmpty() || cintaActualEnDrive.equals("---") || cintaActualEnDrive.equals("VACÍO"));
             boolean esLaMismaCinta = barcode.equalsIgnoreCase(cintaActualEnDrive);
 
             String jsonPayload = "";
             String driveAddress = "3"; //Especificar Drive
+            String accion = ""; // LOAD (carga = uso) o UNLOAD (descarga)
 
             if (esLaMismaCinta) {
                 // ==========================================
                 // ACCIÓN: DESCARGAR (Drive -> Slot)
                 // ==========================================
+                accion = "UNLOAD";
                 String slotVacio = buscarSlotVacio(slotsNode);
                 if (slotVacio == null) {
                     return "Error: La librería está llena. No hay slots vacíos (1.1 - 1.40) para descargar la cinta.";
@@ -213,8 +214,9 @@ public class LibraryService {
                         "}";
             } else {
                 // ==========================================
-                // ACCIÓN: CARGAR (Slot -> Drive)
+                // ACCIÓN: CARGAR (Slot -> Drive) = un USO
                 // ==========================================
+                accion = "LOAD";
                 // SEGURIDAD: Si el Drive tiene OTRA cinta, bloqueamos.
                 if (!driveVacio) {
                     return "Error de Seguridad: El Drive ya está ocupado por la cinta [" + cintaActualEnDrive + "]. Debes descargarla primero.";
@@ -237,12 +239,11 @@ public class LibraryService {
             String urlMove = "https://" + ip + ":3031/rest/library/movemedia";
             HttpEntity<String> entityPost = new HttpEntity<>(jsonPayload, headers);
 
-            // Disparamos la petición POST con el JSON en el cuerpo
             ResponseEntity<String> responseMove = restTemplate.exchange(urlMove, HttpMethod.POST, entityPost, String.class);
 
-            // Verificamos si la respuesta de la TS4300 fue exitosa (200 OK o 201 Created)
             if (responseMove.getStatusCode() == HttpStatus.OK || responseMove.getStatusCode() == HttpStatus.CREATED || responseMove.getStatusCode() == HttpStatus.ACCEPTED) {
-                return "SUCCESS";
+                // Devolvemos qué acción fue: SUCCESS_LOAD (uso) o SUCCESS_UNLOAD (descarga)
+                return "SUCCESS_" + accion;
             } else {
                 return "Error inesperado del robot al intentar mover la cinta. Código HTTP: " + responseMove.getStatusCodeValue();
             }
@@ -252,4 +253,5 @@ public class LibraryService {
             return "Excepción interna al comunicarse con TS4300: " + e.getMessage();
         }
     }
+
 }
