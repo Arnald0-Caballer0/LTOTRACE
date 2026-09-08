@@ -1,0 +1,185 @@
+/* ============================================================
+   LTOTRACE — Hoja de estilos central
+   Paleta:  azul #70a1bd  ·  oscuro #343734  ·  claro #eff1e8
+   Se aplica a todas las pantallas con solo enlazarla.
+   ============================================================ */
+:root {
+    --lto-azul: #70a1bd;
+    --lto-azul-hover: #5f8fab;
+    --lto-oscuro: #343734;
+    --lto-claro: #eff1e8;
+    --lto-gris: #7a7f78;
+    --lto-borde: #dfe2d8;
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    color: var(--lto-oscuro);
+}
+
+/* Fondos de superficie claros */
+body,
+.div-derecho {
+    background-color: var(--lto-claro) !important;
+}
+
+/* Barras superiores y panel lateral, en el gris oscuro de marca */
+.navbar-custom,
+.navbar.bg-dark,
+.navbar-dark,
+.div-izquierdo,
+.bg-lto-dark {
+    background-color: var(--lto-oscuro) !important;
+}
+
+/* Marca LTOTRACE */
+.brand-lto { font-weight: 800; letter-spacing: 1px; }
+.brand-lto .accent { color: var(--lto-azul); }
+
+/* Botones primarios en azul de marca */
+.btn-primary {
+    background-color: var(--lto-azul) !important;
+    border-color: var(--lto-azul) !important;
+    color: #fff !important;
+}
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--lto-azul-hover) !important;
+    border-color: var(--lto-azul-hover) !important;
+}
+.btn-outline-primary {
+    color: var(--lto-azul) !important;
+    border-color: var(--lto-azul) !important;
+}
+.btn-outline-primary:hover {
+    background-color: var(--lto-azul) !important;
+    color: #fff !important;
+}
+
+/* Enlaces */
+a { color: var(--lto-azul); }
+a:hover { color: var(--lto-azul-hover); }
+
+/* Foco de formularios */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--lto-azul);
+    box-shadow: 0 0 0 0.2rem rgba(112, 161, 189, 0.25);
+}
+
+/* Tarjetas: bordes suaves y sombra sutil */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(52, 55, 52, 0.07);
+}
+
+/* Encabezados de tabla, sobrios y en oscuro */
+.table thead th,
+.table-light thead th {
+    background-color: var(--lto-oscuro) !important;
+    color: #fff !important;
+    font-weight: 600;
+    border-bottom: none;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    letter-spacing: 0.4px;
+}
+.table tbody tr:hover {
+    background-color: rgba(112, 161, 189, 0.08);
+}
+
+/* Badges primarios en azul */
+.badge.bg-primary { background-color: var(--lto-azul) !important; }
+
+/* ---------- Tarjetas contadoras (dashboard) ---------- */
+.lto-counter {
+    background-color: #fff;
+    border: 1px solid var(--lto-borde);
+    border-left: 5px solid var(--lto-azul);
+    border-radius: 10px;
+    transition: transform 0.2s ease;
+}
+.lto-counter:hover { transform: translateY(-3px); }
+
+.lto-counter .lto-icon {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 1.3rem;
+    background-color: rgba(112, 161, 189, 0.15);
+    color: var(--lto-azul);
+}
+.lto-counter .etiqueta {
+    color: var(--lto-gris);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+.lto-counter .valor {
+    color: var(--lto-oscuro);
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* Variantes de acento para diferenciar cada contador */
+.lto-counter.oscuro { border-left-color: var(--lto-oscuro); }
+.lto-counter.oscuro .lto-icon { background-color: rgba(52, 55, 52, 0.10); color: var(--lto-oscuro); }
+.lto-counter.gris { border-left-color: var(--lto-gris); }
+.lto-counter.gris .lto-icon { background-color: rgba(122, 127, 120, 0.15); color: var(--lto-gris); }
+
+/* ============================================================
+   BARRA LATERAL DE NAVEGACIÓN (fija, replegable)
+   ============================================================ */
+.lto-rail {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 64px;
+    background: var(--lto-oscuro);
+    color: #cfd3cc;
+    z-index: 2000;
+    display: flex; flex-direction: column;
+    transition: width 0.18s ease;
+}
+body.rail-expanded .lto-rail { width: 220px; }
+
+.lto-rail a { color: #cfd3cc; text-decoration: none; }
+.lto-rail-top { display: flex; align-items: center; height: 56px; padding: 0 12px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.lto-rail-toggle { background: none; border: none; color: #fff; font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 6px; }
+.lto-rail-brand { margin-left: 8px; white-space: nowrap; opacity: 0; transition: opacity .15s; color: #fff; font-size: 1rem; }
+body.rail-expanded .lto-rail-brand { opacity: 1; }
+
+.lto-rail-menu { list-style: none; margin: 8px 0 0; padding: 0; flex: 1; }
+.lto-rail-menu li { position: relative; }
+.lto-rail-menu li > a { display: flex; align-items: center; gap: 14px; padding: 12px 20px; white-space: nowrap; border-left: 3px solid transparent; }
+.lto-rail-menu li > a i { font-size: 1.25rem; min-width: 24px; text-align: center; }
+.lto-rail-menu li > a:hover { background: rgba(255,255,255,.06); color: #fff; }
+.lto-rail-menu li.activo > a { background: rgba(112,161,189,.18); border-left-color: var(--lto-azul); color: #fff; }
+.lto-rail-label { opacity: 0; transition: opacity .15s; }
+body.rail-expanded .lto-rail-label { opacity: 1; }
+
+/* Menú flotante de sub-opciones (al pasar el cursor) */
+.lto-flyout {
+    position: absolute; top: 0; left: 100%;
+    min-width: 210px; background: #fff; color: var(--lto-oscuro);
+    border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.18);
+    padding: 8px; margin-left: 6px;
+    opacity: 0; visibility: hidden; transform: translateX(-6px);
+    transition: all .15s ease; z-index: 2100;
+}
+.lto-rail-menu li.tiene-sub:hover .lto-flyout { opacity: 1; visibility: visible; transform: translateX(0); }
+.lto-flyout-title { font-weight: 700; font-size: .72rem; text-transform: uppercase; color: var(--lto-gris); padding: 6px 10px; letter-spacing: .5px; }
+.lto-flyout a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 6px; font-size: .9rem; color: var(--lto-oscuro); }
+.lto-flyout a:hover { background: var(--lto-claro); color: var(--lto-azul); }
+
+.lto-rail-bottom { border-top: 1px solid rgba(255,255,255,.08); padding: 6px 0; }
+.lto-rail-bottom a { display: flex; align-items: center; gap: 14px; padding: 12px 20px; white-space: nowrap; }
+.lto-rail-bottom a i { font-size: 1.25rem; min-width: 24px; text-align: center; }
+.lto-rail-bottom a:hover { background: rgba(255,255,255,.06); color: #fff; }
+
+/* El contenido de cada página se corre para dejar lugar a la barra */
+.app-content { margin-left: 64px; transition: margin-left .18s ease; }
+body.rail-expanded .app-content { margin-left: 220px; }
