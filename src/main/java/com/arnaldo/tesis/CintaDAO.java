@@ -448,9 +448,13 @@ public class CintaDAO {
     }
 
     // ==========================================================
-    // 6. Retiro de múltiples cintas (en una sola transacción)
+    // 6. Retiro de múltiples cintas (guardando el comprobante)
     // ==========================================================
     public void retirarCintas(List<String> barcodes) {
+        retirarCintas(barcodes, null);
+    }
+
+    public void retirarCintas(List<String> barcodes, String comprobanteBase64) {
         if (barcodes == null || barcodes.isEmpty()) return;
 
         StringBuilder sql = new StringBuilder(
@@ -474,8 +478,9 @@ public class CintaDAO {
                 filasAfectadas = pstmt.executeUpdate();
             }
 
+            // Un movimiento RETIRO por cinta, guardando el comprobante (PDF en Base64)
             for (String barcode : barcodes) {
-                registrarMovimiento(conn, barcode, "RETIRO", "Cinta retirada del inventario", null);
+                registrarMovimiento(conn, barcode, "RETIRO", "Cinta retirada del inventario", comprobanteBase64);
             }
 
             conn.commit();
@@ -487,6 +492,7 @@ public class CintaDAO {
             cerrar(conn);
         }
     }
+
 
     // ==========================================================
     // 7. Cambiar la ubicación de una sola cinta (Inventario)
@@ -548,6 +554,22 @@ public class CintaDAO {
             System.err.println("Error en buscarPorBarcodes: " + e.getMessage());
         }
         return lista;
+    }
+
+    // Devuelve el comprobante (PDF en Base64) guardado en un movimiento, o null si no tiene
+    public String obtenerComprobante(Long movimientoId) {
+        String sql = "SELECT comprobante_digital FROM movimientos WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, movimientoId);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("comprobante_digital");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al obtener comprobante: " + e.getMessage());
+        }
+        return null;
     }
 
 }

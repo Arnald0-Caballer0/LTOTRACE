@@ -23,8 +23,7 @@ public class CintaController {
     private ClienteDAO clienteDAO;
     @Autowired
     private LibraryService libraryService;
-    @Autowired
-    private ComprobanteService comprobanteService;
+
 
     @GetMapping("/")
     public String index(@RequestParam(name = "clienteId", required = false) Integer clienteId,
@@ -157,9 +156,26 @@ public class CintaController {
             fila.put("fecha", m.getFecha() != null ? m.getFecha().format(fmt) : "");
             fila.put("observacion", m.getObservacion() != null ? m.getObservacion() : "");
             fila.put("usuario", m.getUsuario() != null ? m.getUsuario() : "");
+            fila.put("id", String.valueOf(m.getId()));
+            boolean tiene = m.getComprobanteDigital() != null && !m.getComprobanteDigital().isEmpty();
+            fila.put("tieneComprobante", tiene ? "true" : "false");
             salida.add(fila);
         }
         return salida;
+    }
+
+    // Devuelve el comprobante PDF guardado de un movimiento
+    @GetMapping("/api/comprobante/{id}")
+    public ResponseEntity<byte[]> descargarComprobante(@PathVariable("id") Long id) {
+        String base64 = cintaDAO.obtenerComprobante(id);
+        if (base64 == null || base64.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] pdf = java.util.Base64.getDecoder().decode(base64);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"comprobante.pdf\"");
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 
 }

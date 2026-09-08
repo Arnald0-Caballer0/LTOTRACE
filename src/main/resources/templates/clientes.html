@@ -24,6 +24,7 @@
     .dash-card { border-radius: 10px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: 0.3s; }
     .dash-card:hover { transform: translateY(-3px); }
   </style>
+  <link rel="stylesheet" href="/css/lto.css">
 </head>
 <body>
 
@@ -92,26 +93,35 @@
 <template id="tpl-inventario">
   <div class="row mb-4">
     <div class="col-md-4">
-      <div class="card dash-card bg-primary text-white h-100">
-        <div class="card-body">
-          <h6 class="card-title opacity-75"><i class="bi bi-robot"></i> Librería Robot</h6>
-          <h2 class="display-6 fw-bold mb-0">15</h2>
+      <div class="card lto-counter h-100">
+        <div class="card-body d-flex align-items-center">
+          <div class="lto-icon"><i class="bi bi-robot"></i></div>
+          <div class="ms-3">
+            <div class="etiqueta">Librería Robot</div>
+            <div class="valor display-6">0</div>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-md-4">
-      <div class="card dash-card bg-success text-white h-100">
-        <div class="card-body">
-          <h6 class="card-title opacity-75"><i class="bi bi-safe"></i> En Armario</h6>
-          <h2 class="display-6 fw-bold mb-0">42</h2>
+      <div class="card lto-counter oscuro h-100">
+        <div class="card-body d-flex align-items-center">
+          <div class="lto-icon"><i class="bi bi-safe"></i></div>
+          <div class="ms-3">
+            <div class="etiqueta">En Armario</div>
+            <div class="valor display-6">0</div>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-md-4">
-      <div class="card dash-card bg-secondary text-white h-100">
-        <div class="card-body">
-          <h6 class="card-title opacity-75"><i class="bi bi-disc"></i> Vírgenes</h6>
-          <h2 class="display-6 fw-bold mb-0">8</h2>
+      <div class="card lto-counter gris h-100">
+        <div class="card-body d-flex align-items-center">
+          <div class="lto-icon"><i class="bi bi-disc"></i></div>
+          <div class="ms-3">
+            <div class="etiqueta">Vírgenes</div>
+            <div class="valor display-6">0</div>
+          </div>
         </div>
       </div>
     </div>
@@ -218,11 +228,8 @@
         </div>
       </div>
 
-      <div class="d-flex justify-content-between mb-3">
-        <button class="btn btn-outline-primary btn-sm w-100 me-1"><i class="bi bi-envelope"></i> Email</button>
-        <button class="btn btn-outline-success btn-sm w-100 mx-1"><i class="bi bi-file-earmark-excel"></i> Excel</button>
-
-        <button id="btnExportarPdf" class="btn btn-outline-danger btn-sm w-100 ms-1"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+      <div class="d-flex justify-content-end mb-3">
+        <button id="btnExportarPdf" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
       </div>
 
       <button id="btnProcesarRetiro" class="btn btn-warning w-100 fw-bold py-3 shadow-sm">
@@ -442,18 +449,18 @@
 
                       // -- INVENTARIO --
                       if (operacion === 'inventario') {
-                          const tbody = document.querySelector('.table tbody');
-                          if(tbody) tbody.innerHTML = '';
+                        const tbody = document.querySelector('.table tbody');
+                        if (tbody) tbody.innerHTML = '';
 
-                          let contRobot = 0, contArmario = 0, contVirgen = 0;
+                        let contRobot = 0, contArmario = 0, contVirgen = 0;
 
-                          cintas.forEach(c => {
-                              if (c.ubicacion === 'LIBRERIA') contRobot++;
-                              if (c.ubicacion === 'ARMARIO') contArmario++;
-                              if (c.estado === 'VIRGEN') contVirgen++;
+                        cintas.forEach(c => {
+                          if (c.ubicacion === 'LIBRERIA') contRobot++;
+                          if (c.ubicacion === 'ARMARIO') contArmario++;
+                          if (c.volumeId === 'PENDIENTE') contVirgen++;
 
-                              const tr = document.createElement('tr');
-                              tr.innerHTML = `
+                          const tr = document.createElement('tr');
+                          tr.innerHTML = `
                                   <td>${c.barcode}</td>
                                   <td>${c.volumeId}</td>
                                   <td>${c.tecnologia || '-'}</td>
@@ -463,36 +470,35 @@
                                           <option value="LIBRERIA" ${c.ubicacion === 'LIBRERIA' ? 'selected' : ''}>Librería</option>
                                           <option value="ARMARIO" ${c.ubicacion === 'ARMARIO' ? 'selected' : ''}>Armario</option>
                                           <option value="RETIRADO" ${c.ubicacion === 'RETIRADO' ? 'selected' : ''}>Retirado</option>
-                                          <option value="VIRGEN" ${c.ubicacion === 'VIRGEN' ? 'selected' : ''}>Virgen</option>
                                       </select>
                                   </td>
                               `;
-                              if(tbody) tbody.appendChild(tr);
-                          });
+                          if (tbody) tbody.appendChild(tr);
+                        });
 
-                          const displays = document.querySelectorAll('.display-6');
-                          if(displays.length >= 3) {
-                              displays[0].innerText = contRobot;
-                              displays[1].innerText = contArmario;
-                              displays[2].innerText = contVirgen;
-                          }
+                        const displays = document.querySelectorAll('.display-6');
+                        if (displays.length >= 3) {
+                          displays[0].innerText = contRobot;
+                          displays[1].innerText = contArmario;
+                          displays[2].innerText = contVirgen;
+                        }
 
-                          // ==========================================
+                        // ==========================================
                         // BUSCADOR EN VIVO: INVENTARIO
                         // ==========================================
                         const buscadorInv = document.getElementById('buscadorInventario');
                         if (buscadorInv && tbody) {
-                            buscadorInv.addEventListener('keyup', function() {
-                                const textoBusqueda = this.value.toLowerCase();
-                                const filas = tbody.querySelectorAll('tr');
+                          buscadorInv.addEventListener('keyup', function () {
+                            const textoBusqueda = this.value.toLowerCase();
+                            const filas = tbody.querySelectorAll('tr');
 
-                                filas.forEach(fila => {
-                                    // textContent lee todo el texto de la fila (barcode, volumeId, etc.)
-                                    const contenidoFila = fila.textContent.toLowerCase();
-                                    // Si el texto de búsqueda está en la fila, la mostramos, sino la ocultamos
-                                    fila.style.display = contenidoFila.includes(textoBusqueda) ? '' : 'none';
-                                });
+                            filas.forEach(fila => {
+                              // textContent lee todo el texto de la fila (barcode, volumeId, etc.)
+                              const contenidoFila = fila.textContent.toLowerCase();
+                              // Si el texto de búsqueda está en la fila, la mostramos, sino la ocultamos
+                              fila.style.display = contenidoFila.includes(textoBusqueda) ? '' : 'none';
                             });
+                          });
                         }
 
                         // ==========================================
@@ -505,70 +511,86 @@
                         // 2. Lógica del botón PDF
                         const btnPdfInventario = document.getElementById('btnPdfInventario');
                         if (btnPdfInventario) {
-                            btnPdfInventario.addEventListener('click', function(e) {
-                                e.preventDefault();
+                          btnPdfInventario.addEventListener('click', function (e) {
+                            e.preventDefault();
 
-                                // Feedback visual
-                                const textoOriginal = this.innerHTML;
-                                this.innerHTML = '<i class="bi bi-hourglass-split"></i> Generando...';
-                                this.disabled = true;
+                            // Feedback visual
+                            const textoOriginal = this.innerHTML;
+                            this.innerHTML = '<i class="bi bi-hourglass-split"></i> Generando...';
+                            this.disabled = true;
 
-                                const elementoOriginal = document.getElementById('zonaInventarioImprimible');
+                            const elementoOriginal = document.getElementById('zonaInventarioImprimible');
 
-                                // TRUCO MAESTRO: Hacemos un clon de la tabla en memoria
-                                const clonParaImprimir = elementoOriginal.cloneNode(true);
+                            // TRUCO MAESTRO: Hacemos un clon de la tabla en memoria
+                            const clonParaImprimir = elementoOriginal.cloneNode(true);
 
-                                // Buscamos todos los <select> en el clon y los cambiamos por texto puro
-                                const selects = clonParaImprimir.querySelectorAll('select');
-                                selects.forEach(select => {
-                                    // Sacamos el texto (ej. "Librería")
-                                    const textoSeleccionado = select.options[select.selectedIndex].text;
+                            // Buscamos todos los <select> en el clon y los cambiamos por texto puro
+                            const selects = clonParaImprimir.querySelectorAll('select');
+                            selects.forEach(select => {
+                              // Sacamos el texto (ej. "Librería")
+                              const textoSeleccionado = select.options[select.selectedIndex].text;
 
-                                    // Creamos una etiqueta normal
-                                    const span = document.createElement('span');
-                                    span.className = 'fw-bold text-dark';
-                                    span.innerText = textoSeleccionado;
+                              // Creamos una etiqueta normal
+                              const span = document.createElement('span');
+                              span.className = 'fw-bold text-dark';
+                              span.innerText = textoSeleccionado;
 
-                                    // Reemplazamos el select problemático por el texto
-                                    select.parentNode.replaceChild(span, select);
-                                });
-
-                                const opciones = {
-                                    margin:       10,
-                                    filename:     `Inventario_${nombreEmpresa.replace(/\s+/g, '_')}.pdf`,
-                                    image:        { type: 'jpeg', quality: 0.98 },
-                                    html2canvas:  { scale: 2 },
-                                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' } // Horizontal
-                                };
-
-                                // Le pasamos el CLON LIMPIO a la librería
-                                html2pdf().set(opciones).from(clonParaImprimir).save().then(() => {
-                                    // Restauramos el botón al terminar
-                                    this.innerHTML = textoOriginal;
-                                    this.disabled = false;
-                                }).catch(err => {
-                                    console.error("Error al generar PDF:", err);
-                                    this.innerHTML = textoOriginal;
-                                    this.disabled = false;
-                                    alert("Hubo un problema al generar el PDF.");
-                                });
+                              // Reemplazamos el select problemático por el texto
+                              select.parentNode.replaceChild(span, select);
                             });
+
+                            const opciones = {
+                              margin: 10,
+                              filename: `Inventario_${nombreEmpresa.replace(/\s+/g, '_')}.pdf`,
+                              image: {type: 'jpeg', quality: 0.98},
+                              html2canvas: {scale: 2},
+                              jsPDF: {unit: 'mm', format: 'a4', orientation: 'landscape'} // Horizontal
+                            };
+
+                            // Le pasamos el CLON LIMPIO a la librería
+                            html2pdf().set(opciones).from(clonParaImprimir).save().then(() => {
+                              // Restauramos el botón al terminar
+                              this.innerHTML = textoOriginal;
+                              this.disabled = false;
+                            }).catch(err => {
+                              console.error("Error al generar PDF:", err);
+                              this.innerHTML = textoOriginal;
+                              this.disabled = false;
+                              alert("Hubo un problema al generar el PDF.");
+                            });
+                          });
                         }
 
-                          // Lógica del Select de Cambio de Ubicación
-                          document.querySelectorAll('.select-ubicacion').forEach(select => {
-                              select.addEventListener('change', function() {
-                                  const barcode = this.getAttribute('data-barcode');
-                                  const nuevaUbi = this.value;
-                                  fetch(`/api/actualizar-ubicacion?barcode=${barcode}&ubicacion=${nuevaUbi}`, { method: 'POST' })
-                                  .then(res => res.json())
-                                  .then(data => {
-                                      if (data.status === 'success') btnEntrar.click(); // Recarga la tabla
-                                  });
-                              });
-                          });
-                      }
+                        // Lógica del Select de Cambio de Ubicación (sin recargar la tabla)
+                        document.querySelectorAll('.select-ubicacion').forEach(select => {
+                          select.addEventListener('change', function () {
+                            const barcode = this.getAttribute('data-barcode');
+                            const nuevaUbi = this.value;
+                            fetch(`/api/actualizar-ubicacion?barcode=${barcode}&ubicacion=${nuevaUbi}`, {method: 'POST'})
+                                    .then(res => res.json())
+                                    .then(data => {
+                                      if (data.status === 'success') {
+                                        // Actualizamos el dato en memoria y recalculamos los contadores
+                                        const cintaMod = cintas.find(c => c.barcode === barcode);
+                                        if (cintaMod) cintaMod.ubicacion = nuevaUbi;
 
+                                        let r = 0, a = 0, v = 0;
+                                        cintas.forEach(c => {
+                                          if (c.ubicacion === 'LIBRERIA') r++;
+                                          if (c.ubicacion === 'ARMARIO') a++;
+                                          if (c.volumeId === 'PENDIENTE') v++;
+                                        });
+                                        const disp = document.querySelectorAll('.display-6');
+                                        if (disp.length >= 3) {
+                                          disp[0].innerText = r;
+                                          disp[1].innerText = a;
+                                          disp[2].innerText = v;
+                                        }
+                                      }
+                                    });
+                          });
+                        });
+                      }
                       // -- RETIRO CINTAS --
                       if (operacion === 'retiro') {
                           document.getElementById('actaClienteNombre').innerText = nombreEmpresa;
@@ -650,31 +672,39 @@
                           }
 
                           // Evento: Botón Procesar Retiro (Base de Datos)
-                          const btnProcesarRetiro = document.getElementById('btnProcesarRetiro');
-                          if (btnProcesarRetiro) {
-                              btnProcesarRetiro.addEventListener('click', function() {
-                                  const seleccionados = document.querySelectorAll('.check-retiro:checked');
-                                  const barcodes = Array.from(seleccionados).map(cb => cb.getAttribute('data-barcode'));
-                                  if (barcodes.length === 0) {
-                                      alert('Seleccione al menos una cinta para retirar.');
-                                      return;
-                                  }
-                                  if (confirm(`¿Está seguro de que desea procesar el retiro de ${barcodes.length} cinta(s)?`)) {
-                                      fetch('/api/retirar-cintas', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify(barcodes)
+                        const btnProcesarRetiro = document.getElementById('btnProcesarRetiro');
+                        if (btnProcesarRetiro) {
+                          btnProcesarRetiro.addEventListener('click', function() {
+                            const seleccionados = document.querySelectorAll('.check-retiro:checked');
+                            const barcodes = Array.from(seleccionados).map(cb => cb.getAttribute('data-barcode'));
+                            if (barcodes.length === 0) {
+                              alert('Seleccione al menos una cinta para retirar.');
+                              return;
+                            }
+                            if (confirm(`¿Está seguro de que desea procesar el retiro de ${barcodes.length} cinta(s)?`)) {
+                              const clienteId = clienteSelect.value;
+                              fetch('/api/comprobante-retiro?clienteId=' + clienteId, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(barcodes)
+                              })
+                                      .then(resp => { if (!resp.ok) throw new Error('error'); return resp.blob(); })
+                                      .then(blob => {
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = 'acta_retiro.pdf';
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        a.remove();
+                                        window.URL.revokeObjectURL(url);
+                                        alert('¡Retiro procesado! Se descargó y guardó el comprobante.');
+                                        btnEntrar.click();
                                       })
-                                      .then(res => res.json())
-                                      .then(data => {
-                                          if (data.status === 'success') {
-                                              alert('¡Retiro procesado exitosamente en la base de datos!');
-                                              btnEntrar.click(); // Recarga la tabla
-                                          }
-                                      });
-                                  }
-                              });
-                          }
+                                      .catch(err => alert('Ocurrió un error al procesar el retiro.'));
+                            }
+                          });
+                        }
                       } // Fin Retiro
                     })
                     .catch(error => console.error("Error al obtener datos:", error));

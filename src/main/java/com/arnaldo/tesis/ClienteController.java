@@ -8,6 +8,10 @@ import java.util.List;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 
 @Controller
 public class ClienteController {
@@ -79,5 +83,32 @@ public class ClienteController {
         } catch (Exception e) {
             return "{\"status\":\"error\"}";
         }
+    }
+
+    @Autowired
+    private ComprobanteService comprobanteService;
+
+    // Procesa el retiro: genera el PDF, lo guarda en la base y lo descarga
+    @PostMapping("/api/comprobante-retiro")
+    public ResponseEntity<byte[]> comprobanteRetiro(
+            @org.springframework.web.bind.annotation.RequestParam("clienteId") Long clienteId,
+            @RequestBody List<String> barcodes) {
+
+        // 1. Datos para el acta (antes de retirar)
+        Cliente cliente = clienteDAO.findById(clienteId).orElse(null);
+        List<Cinta> cintas = cintaDAO.buscarPorBarcodes(barcodes);
+
+        // 2. Generar el PDF
+        byte[] pdf = comprobanteService.generarActaRetiro(cliente, cintas, UsuarioActual.get());
+
+        // 3. Guardar el PDF (Base64) y retirar las cintas en un solo paso
+        String base64 = java.util.Base64.getEncoder().encodeToString(pdf);
+        cintaDAO.retirarCintas(barcodes, base64);
+
+        // 4. Devolver el PDF para descarga
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "acta_retiro.pdf");
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 }
