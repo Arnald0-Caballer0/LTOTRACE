@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>LTOTRACE · Cintas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/lto.css">
+</head>
+<body>
+
+<div th:replace="~{fragments/barra :: rail('cintas')}"></div>
+
+<div class="app-content">
+    <div class="container-fluid p-4">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <div class="d-flex align-items-center gap-3">
+                <h4 class="fw-bold m-0"><i class="bi bi-hdd-stack"></i> Cintas</h4>
+                <span class="badge bg-primary" style="font-size:.9rem;">Total: <span id="totalCintas">0</span></span>
+            </div>
+            <button class="btn btn-primary fw-bold" id="btnCrearCintas">
+                <i class="bi bi-plus-lg"></i> Crear cintas
+            </button>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <input type="text" id="buscador" class="form-control form-control-sm" style="max-width:300px"
+                   placeholder="Buscar barcode, cliente, Volume ID...">
+            <select id="filtroTecnologia" class="form-select form-select-sm" style="max-width:170px">
+                <option value="">Toda tecnología</option>
+                <option value="LTO-6">LTO-6</option>
+                <option value="LTO-7">LTO-7</option>
+                <option value="LTO-8">LTO-8</option>
+                <option value="LTO-9">LTO-9</option>
+            </select>
+            <select id="filtroUbicacion" class="form-select form-select-sm" style="max-width:170px">
+                <option value="">Toda ubicación</option>
+                <option value="LIBRERIA">Librería</option>
+                <option value="ARMARIO">Armario</option>
+                <option value="RETIRADO">Retirado</option>
+            </select>
+        </div>
+
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                        <tr>
+                            <th>Barcode</th><th>Volume ID</th><th>Cliente</th><th>Tecnología</th>
+                            <th>Ubicación</th><th>Estado</th><th>Usos</th><th>1er uso</th>
+                            <th>Semanal</th><th>Últ. modificación</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tbodyCintas">
+                        <tr th:each="c : ${cintas}" th:attr="data-tec=${c.tecnologia}, data-ubi=${c.ubicacion}">
+                            <td class="fw-bold" th:text="${c.barcode}"></td>
+                            <td><span th:text="${c.volumeId}"
+                                      th:classappend="${c.volumeId == 'PENDIENTE'} ? 'text-danger fw-bold' : 'text-primary fw-bold'"></span></td>
+                            <td th:text="${c.cliente}"></td>
+                            <td><span class="badge bg-secondary" th:text="${c.tecnologia}"></span></td>
+                            <td th:text="${c.ubicacion}"></td>
+                            <td th:text="${c.estado} ?: '-'"></td>
+                            <td th:text="${c.usos}"></td>
+                            <td th:text="${c.fechaPrimerUso}"></td>
+                            <td th:text="${c.esSemanal} ? ${c.diaSemana} : '-'"></td>
+                            <td class="small text-muted" th:text="${c.ultimaModificacion}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="sinResultados" class="text-center text-muted py-4" style="display:none;">
+                    No hay cintas que coincidan con la búsqueda.
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ============ MODAL: Crear cintas por lote ============ -->
+<div class="modal fade" id="modalCrear" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-square"></i> Crear cintas</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formCrear">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Cliente</label>
+                            <select id="crearCliente" class="form-select" required>
+                                <option value="">Seleccionar...</option>
+                                <option th:each="cl : ${clientes}" th:value="${cl.id}" th:text="${cl.nombre}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Tecnología</label>
+                            <input list="listaTec" id="crearTec" class="form-control" value="LTO-8" autocomplete="off" required>
+                            <datalist id="listaTec">
+                                <option value="LTO-6"></option>
+                                <option value="LTO-7"></option>
+                                <option value="LTO-8"></option>
+                                <option value="LTO-9"></option>
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Cantidad</label>
+                            <input type="number" id="crearCantidad" class="form-control" min="1" max="500" value="5" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Nombre (plantilla)</label>
+                            <input type="text" id="crearPlantilla" class="form-control" placeholder="CC00--L8" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Número inicial</label>
+                            <input type="number" id="crearInicio" class="form-control" min="0" value="1" required>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border mt-3 mb-0 small">
+                        <div class="text-muted mb-1">
+                            <i class="bi bi-info-circle"></i>
+                            Usá <strong>guiones</strong> donde va el número automático.
+                            Ej: <code>CC00--L8</code> (2 guiones = 2 dígitos) o <code>SUD---L9</code> (3 guiones = 3 dígitos).
+                        </div>
+                        <div class="fw-bold">Se crearán: <span id="crearPreview" class="text-primary">—</span></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-check-lg"></i> Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tbody = document.getElementById('tbodyCintas');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        document.getElementById('totalCintas').textContent = rows.length;
+
+        const buscador = document.getElementById('buscador');
+        const fTec = document.getElementById('filtroTecnologia');
+        const fUbi = document.getElementById('filtroUbicacion');
+        const aviso = document.getElementById('sinResultados');
+
+        function norm(s) { return (s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+
+        function filtrar() {
+            const q = buscador.value.toLowerCase().trim();
+            const tec = fTec.value, ubi = fUbi.value;
+            let visibles = 0;
+            rows.forEach(tr => {
+                const okTxt = tr.textContent.toLowerCase().includes(q);
+                const okTec = !tec || tr.getAttribute('data-tec') === tec;
+                const okUbi = !ubi || norm(tr.getAttribute('data-ubi')) === ubi;
+                const mostrar = okTxt && okTec && okUbi;
+                tr.style.display = mostrar ? '' : 'none';
+                if (mostrar) visibles++;
+            });
+            aviso.style.display = (visibles === 0) ? '' : 'none';
+        }
+        buscador.addEventListener('input', filtrar);
+        fTec.addEventListener('change', filtrar);
+        fUbi.addEventListener('change', filtrar);
+
+        const modalCrear = new bootstrap.Modal(document.getElementById('modalCrear'));
+        document.getElementById('btnCrearCintas').addEventListener('click', () => modalCrear.show());
+        if (new URLSearchParams(window.location.search).has('crear')) { modalCrear.show(); }
+
+        function generarPreview() {
+            const plantilla = document.getElementById('crearPlantilla').value;
+            const ini = parseInt(document.getElementById('crearInicio').value) || 0;
+            const cant = parseInt(document.getElementById('crearCantidad').value) || 0;
+            const prev = document.getElementById('crearPreview');
+            const pri = plantilla.indexOf('-'), ult = plantilla.lastIndexOf('-');
+            if (pri < 0 || cant < 1) { prev.textContent = '—'; return; }
+            let contig = true;
+            for (let i = pri; i <= ult; i++) { if (plantilla[i] !== '-') { contig = false; break; } }
+            if (!contig) { prev.textContent = 'Los guiones deben ir juntos'; return; }
+            const pre = plantilla.substring(0, pri), suf = plantilla.substring(ult + 1), ancho = ult - pri + 1;
+            const nombre = n => pre + String(n).padStart(ancho, '0') + suf;
+            prev.textContent = (cant === 1) ? nombre(ini)
+                : nombre(ini) + '  \u2192  ' + nombre(ini + cant - 1) + '   (' + cant + ' cintas)';
+        }
+        ['crearPlantilla', 'crearInicio', 'crearCantidad'].forEach(id =>
+            document.getElementById(id).addEventListener('input', generarPreview));
+
+        document.getElementById('formCrear').addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (!document.getElementById('crearCliente').value) { alert('Seleccioná un cliente.'); return; }
+            const params = new URLSearchParams();
+            params.append('clienteId', document.getElementById('crearCliente').value);
+            params.append('tecnologia', document.getElementById('crearTec').value.trim());
+            params.append('plantilla', document.getElementById('crearPlantilla').value.trim());
+            params.append('numeroInicial', document.getElementById('crearInicio').value);
+            params.append('cantidad', document.getElementById('crearCantidad').value);
+            fetch('/api/crear-cintas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status !== 'success') { alert(data.mensaje || 'Error al crear.'); return; }
+                let msg = 'Cintas creadas: ' + (data.creadas ? data.creadas.length : 0);
+                if (data.omitidas && data.omitidas.length) { msg += '\nOmitidas (ya existían): ' + data.omitidas.join(', '); }
+                alert(msg);
+                window.location.href = '/cintas';
+            })
+            .catch(() => alert('Error al crear las cintas.'));
+        });
+    });
+</script>
+</body>
+</html>
