@@ -183,3 +183,26 @@ body.rail-expanded .lto-rail-label { opacity: 1; }
 /* El contenido de cada página se corre para dejar lugar a la barra */
 .app-content { margin-left: 64px; transition: margin-left .18s ease; }
 body.rail-expanded .app-content { margin-left: 220px; }
+
+/* ===== Ajuste del dashboard para la barra lateral fija ===== */
+:root { --navbar-h: 0px; } /* La barra superior fue reemplazada por la lateral */
+
+.main-wrapper {
+    margin-left: 64px !important;
+    width: calc(100vw - 64px) !important;
+    transition: margin-left 0.18s ease, width 0.18s ease;
+}
+body.rail-expanded .main-wrapper {
+    margin-left: 220px !important;
+    width: calc(100vw - 220px) !important;
+}
+
+/* Tira de estado del drive en el encabezado */
+.drive-strip { border-left: 1px solid var(--lto-borde); padding-left: 18px; }
+.drive-item { display: flex; flex-direction: column; line-height: 1.2; }
+.drive-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--lto-gris); font-weight: 600; }
+.drive-value { font-size: 1.5rem; font-weight: 800; color: var(--lto-oscuro); }
+
+/* ===== Offset del módulo Cliente para la barra lateral ===== */
+.layout-wrapper { margin-left: 64px !important; transition: margin-left 0.18s ease; }
+body.rail-expanded .layout-wrapper { margin-left: 220px !important; }

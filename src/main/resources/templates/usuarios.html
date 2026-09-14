@@ -5,118 +5,156 @@
     <title>LTOTRACE · Usuarios</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <style>
-        body { font-family: 'Inter', 'Segoe UI', sans-serif; background-color: #f4f6f8; }
-        .navbar-custom { background-color: #1a1c1e; }
-        .navbar-custom .brand { font-weight: 800; letter-spacing: 1px; color: #fff; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-    </style>
     <link rel="stylesheet" href="/css/lto.css">
+    <style>
+        body, html { height: 100%; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif; }
+
+        /* Patrón estándar de módulo */
+        .modulo-wrapper { padding: 1rem 1.5rem; height: 100vh; display: flex; flex-direction: column; }
+        .modulo-header { flex-shrink: 0; margin-bottom: 1rem; }
+        .modulo-body { flex-grow: 1; min-height: 0; display: flex; flex-direction: column; }
+
+        /* Título con contador estilo consola */
+        .titulo-modulo { display: flex; align-items: center; gap: .75rem; }
+        .titulo-modulo h4 { margin: 0; font-weight: 700; color: var(--lto-oscuro); }
+        .pill-count {
+            background: #fff; border: 1px solid var(--lto-borde);
+            color: var(--lto-oscuro); font-weight: 700;
+            border-radius: 20px; padding: 1px 12px; font-size: .85rem;
+        }
+        .seguridad-nota { color: var(--lto-gris); font-size: .8rem; display: flex; align-items: center; gap: 5px; }
+
+        /* Contenedor de la tabla */
+        .tabla-card {
+            background: #fff; border: 1px solid var(--lto-borde); border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(52,55,52,.05);
+            flex-grow: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .tabla-toolbar { padding: .75rem 1rem; border-bottom: 1px solid var(--lto-borde); flex-shrink: 0; }
+        .tabla-scroll { overflow: auto; flex-grow: 1; }
+
+        /* Tabla estilo HMC: encabezado claro, filas aireadas, título en mayúscula suave */
+        table.tabla-usuarios { margin: 0; }
+        table.tabla-usuarios thead th {
+            background: #f3f5ef !important; color: var(--lto-oscuro) !important;
+            text-transform: none !important; letter-spacing: 0 !important;
+            font-weight: 600; font-size: .82rem;
+            border-bottom: 1px solid var(--lto-borde) !important;
+            padding: .8rem 1rem; position: sticky; top: 0; z-index: 5;
+        }
+        table.tabla-usuarios tbody td { padding: .9rem 1rem; vertical-align: middle; border-color: #eef0ea; }
+        table.tabla-usuarios tbody tr:hover { background: rgba(112,161,189,.06); }
+        .user-id { font-weight: 600; color: var(--lto-oscuro); }
+
+        /* Pills de rol */
+        .pill-rol { border-radius: 6px; padding: 3px 10px; font-size: .78rem; font-weight: 600; }
+        .pill-rol.admin { background: var(--lto-oscuro); color: #fff; }
+        .pill-rol.operador { background: rgba(112,161,189,.15); color: #4a7288; }
+
+        /* Estado con punto */
+        .estado { display: inline-flex; align-items: center; gap: 7px; font-size: .85rem; font-weight: 500; }
+        .estado .punto { width: 8px; height: 8px; border-radius: 50%; }
+        .estado.activo { color: #2e7d4f; }
+        .estado.activo .punto { background: #2e9e5b; }
+        .estado.inactivo { color: var(--lto-gris); }
+        .estado.inactivo .punto { background: #b8bcb2; }
+
+        .btn-accion { border: none; background: transparent; color: var(--lto-gris); padding: 5px 8px; border-radius: 6px; }
+        .btn-accion:hover { background: var(--lto-claro); color: var(--lto-azul); }
+        .btn-accion.peligro:hover { background: #fdecec; color: #c0392b; }
+    </style>
 </head>
 <body>
 
-<!-- Barra superior -->
-<nav class="navbar navbar-custom px-4 py-3 mb-4">
-    <span class="brand"><i class="bi bi-hdd-stack"></i> LTOTRACE</span>
-    <a href="/" class="btn btn-outline-light btn-sm">
-        <i class="bi bi-arrow-left"></i> Volver al panel
-    </a>
-</nav>
+<div th:replace="~{fragments/barra :: rail('usuarios')}"></div>
 
-<div class="container pb-5">
+<div class="app-content">
+    <div class="modulo-wrapper">
 
-    <h3 class="fw-bold mb-4"><i class="bi bi-people"></i> Gestión de Usuarios</h3>
-
-    <!-- Mensajes -->
-    <div th:if="${param.ok != null and param.ok[0] == 'creado'}" class="alert alert-success py-2">Usuario creado correctamente.</div>
-    <div th:if="${param.ok != null and param.ok[0] == 'estado'}" class="alert alert-success py-2">Estado del usuario actualizado.</div>
-    <div th:if="${param.ok != null and param.ok[0] == 'password'}" class="alert alert-success py-2">Contraseña actualizada.</div>
-    <div th:if="${param.error != null and param.error[0] == 'existe'}" class="alert alert-danger py-2">Ese nombre de usuario ya existe.</div>
-    <div th:if="${param.error != null and param.error[0] == 'datos'}" class="alert alert-danger py-2">Faltan datos obligatorios.</div>
-    <div th:if="${param.error != null and param.error[0] == 'autodesactivar'}" class="alert alert-warning py-2">No podés desactivar tu propio usuario.</div>
-
-    <div class="row g-4">
-
-        <!-- Formulario de creación -->
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-body p-4">
-                    <h6 class="fw-bold text-muted mb-3">NUEVO USUARIO</h6>
-                    <form th:action="@{/usuarios/crear}" method="post">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Usuario</label>
-                            <input type="text" name="username" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Nombre completo</label>
-                            <input type="text" name="nombreCompleto" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Contraseña</label>
-                            <input type="password" name="password" class="form-control" required>
-                        </div>
-                        <div class="mb-4">
-                            <label class="form-label small fw-bold">Rol</label>
-                            <select name="rol" class="form-select">
-                                <option value="OPERADOR" selected>Operador</option>
-                                <option value="ADMIN">Administrador</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 fw-bold">
-                            <i class="bi bi-plus-circle"></i> Crear usuario
-                        </button>
-                    </form>
+        <!-- Encabezado -->
+        <header class="modulo-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <div class="titulo-modulo">
+                        <h4><i class="bi bi-people"></i> Usuarios</h4>
+                        <span class="pill-count" th:text="${#lists.size(usuarios)}">0</span>
+                    </div>
+                    <div class="seguridad-nota mt-1">
+                        <i class="bi bi-shield-lock"></i> Acceso restringido a administradores
+                    </div>
                 </div>
+                <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalCrear">
+                    <i class="bi bi-person-plus"></i> Crear usuario
+                </button>
             </div>
-        </div>
+        </header>
 
-        <!-- Tabla de usuarios -->
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-body p-4">
-                    <h6 class="fw-bold text-muted mb-3">USUARIOS REGISTRADOS</h6>
-                    <div class="table-responsive">
-                        <table class="table align-middle">
-                            <thead>
-                            <tr class="text-muted small">
-                                <th>Usuario</th>
-                                <th>Nombre</th>
-                                <th>Rol</th>
-                                <th>Estado</th>
-                                <th class="text-end">Acciones</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:each="u : ${usuarios}">
-                                <td class="fw-bold" th:text="${u.username}"></td>
-                                <td th:text="${u.nombreCompleto}"></td>
-                                <td>
-                                    <span class="badge"
-                                          th:classappend="${u.rol == 'ADMIN'} ? 'bg-dark' : 'bg-secondary'"
-                                          th:text="${u.rol}"></span>
-                                </td>
-                                <td>
-                                    <span class="badge"
-                                          th:classappend="${u.activo} ? 'bg-success' : 'bg-danger'"
-                                          th:text="${u.activo} ? 'Activo' : 'Inactivo'"></span>
-                                </td>
-                                <td class="text-end">
-                                    <!-- Activar / desactivar -->
-                                    <form th:action="@{'/usuarios/' + ${u.id} + '/estado'}" method="post" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
-                                                th:title="${u.activo} ? 'Desactivar' : 'Activar'">
-                                            <i class="bi" th:classappend="${u.activo} ? 'bi-toggle-on' : 'bi-toggle-off'"></i>
-                                        </button>
-                                    </form>
-                                    <!-- Resetear contraseña -->
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-reset"
-                                            th:data-id="${u.id}" th:data-user="${u.username}" title="Resetear contraseña">
-                                        <i class="bi bi-key"></i>
+        <!-- Mensajes -->
+        <div th:if="${param.ok != null and param.ok[0] == 'creado'}" class="alert alert-success py-2">Usuario creado correctamente.</div>
+        <div th:if="${param.ok != null and param.ok[0] == 'estado'}" class="alert alert-success py-2">Estado del usuario actualizado.</div>
+        <div th:if="${param.ok != null and param.ok[0] == 'password'}" class="alert alert-success py-2">Contraseña actualizada.</div>
+        <div th:if="${param.error != null and param.error[0] == 'existe'}" class="alert alert-danger py-2">Ese nombre de usuario ya existe.</div>
+        <div th:if="${param.error != null and param.error[0] == 'datos'}" class="alert alert-danger py-2">Faltan datos obligatorios.</div>
+        <div th:if="${param.error != null and param.error[0] == 'autodesactivar'}" class="alert alert-warning py-2">No podés desactivar tu propio usuario.</div>
+
+        <!-- Cuerpo -->
+        <div class="modulo-body">
+            <div class="tabla-card">
+                <div class="tabla-toolbar">
+                    <div class="position-relative" style="max-width: 340px;">
+                        <i class="bi bi-search position-absolute" style="left:12px; top:9px; color:var(--lto-gris);"></i>
+                        <input type="text" id="buscador" class="form-control form-control-sm ps-4"
+                               placeholder="Buscar por usuario, nombre o rol...">
+                    </div>
+                </div>
+                <div class="tabla-scroll">
+                    <table class="table tabla-usuarios">
+                        <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Nombre completo</th>
+                            <th>Rol</th>
+                            <th>Autenticación</th>
+                            <th>Estado</th>
+                            <th>Creado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                        </thead>
+                        <tbody id="tbodyUsuarios">
+                        <tr th:each="u : ${usuarios}">
+                            <td><span class="user-id" th:text="${u.username}"></span></td>
+                            <td th:text="${u.nombreCompleto} ?: '—'"></td>
+                            <td>
+                                <span class="pill-rol"
+                                      th:classappend="${u.rol == 'ADMIN'} ? 'admin' : 'operador'"
+                                      th:text="${u.rol == 'ADMIN'} ? 'Administrador' : 'Operador'"></span>
+                            </td>
+                            <td class="text-muted small">local</td>
+                            <td>
+                                <span class="estado" th:classappend="${u.activo} ? 'activo' : 'inactivo'">
+                                    <span class="punto"></span>
+                                    <span th:text="${u.activo} ? 'Activo' : 'Inactivo'"></span>
+                                </span>
+                            </td>
+                            <td class="text-muted small"
+                                th:text="${u.fechaCreacion != null} ? ${#temporals.format(u.fechaCreacion, 'dd/MM/yyyy')} : '—'"></td>
+                            <td class="text-end">
+                                <form th:action="@{'/usuarios/' + ${u.id} + '/estado'}" method="post" class="d-inline">
+                                    <button type="submit" class="btn-accion"
+                                            th:title="${u.activo} ? 'Desactivar' : 'Activar'">
+                                        <i class="bi" th:classappend="${u.activo} ? 'bi-toggle-on' : 'bi-toggle-off'"></i>
                                     </button>
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
+                                </form>
+                                <button type="button" class="btn-accion btn-reset"
+                                        th:data-id="${u.id}" th:data-user="${u.username}" title="Restablecer contraseña">
+                                    <i class="bi bi-key"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div id="sinResultados" class="text-center text-muted py-5" style="display:none;">
+                        No hay usuarios que coincidan con la búsqueda.
                     </div>
                 </div>
             </div>
@@ -125,23 +163,62 @@
     </div>
 </div>
 
-<!-- MODAL: resetear contraseña -->
+<!-- ===== Modal: Crear usuario ===== -->
+<div class="modal fade" id="modalCrear" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-person-plus"></i> Crear usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/usuarios/crear}" method="post">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Usuario</label>
+                        <input type="text" name="username" class="form-control" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Nombre completo</label>
+                        <input type="text" name="nombreCompleto" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Contraseña</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label fw-bold small">Rol</label>
+                        <select name="rol" class="form-select">
+                            <option value="OPERADOR" selected>Operador</option>
+                            <option value="ADMIN">Administrador</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Crear usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Modal: Restablecer contraseña ===== -->
 <div class="modal fade" id="modalReset" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-key"></i> Restablecer contraseña</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
             <form id="formReset" method="post">
-                <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Resetear contraseña</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small">Usuario: <strong id="resetUser"></strong></p>
-                    <label class="form-label small fw-bold">Nueva contraseña</label>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Usuario: <strong id="resetUser"></strong></p>
+                    <label class="form-label fw-bold small">Nueva contraseña</label>
                     <input type="password" name="password" class="form-control" required>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary fw-bold">Guardar</button>
+                    <button type="submit" class="btn btn-primary fw-bold">Guardar contraseña</button>
                 </div>
             </form>
         </div>
@@ -150,16 +227,31 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Prepara el modal de reseteo según el usuario elegido
-    document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.btn-reset');
-        if (btn) {
-            const id = btn.getAttribute('data-id');
-            const user = btn.getAttribute('data-user');
-            document.getElementById('resetUser').textContent = user;
-            document.getElementById('formReset').action = '/usuarios/' + id + '/password';
-            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalReset')).show();
-        }
+    document.addEventListener('DOMContentLoaded', function () {
+        // Buscador
+        const rows = Array.from(document.querySelectorAll('#tbodyUsuarios tr'));
+        const buscador = document.getElementById('buscador');
+        const aviso = document.getElementById('sinResultados');
+        buscador.addEventListener('input', function () {
+            const q = this.value.toLowerCase().trim();
+            let vis = 0;
+            rows.forEach(tr => {
+                const ok = tr.textContent.toLowerCase().includes(q);
+                tr.style.display = ok ? '' : 'none';
+                if (ok) vis++;
+            });
+            aviso.style.display = vis === 0 ? '' : 'none';
+        });
+
+        // Modal de reseteo
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-reset');
+            if (btn) {
+                document.getElementById('resetUser').textContent = btn.getAttribute('data-user');
+                document.getElementById('formReset').action = '/usuarios/' + btn.getAttribute('data-id') + '/password';
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalReset')).show();
+            }
+        });
     });
 </script>
 </body>

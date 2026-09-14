@@ -178,4 +178,59 @@ public class CintaController {
         return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 
+    @GetMapping("/cintas")
+    public String cintas(org.springframework.ui.Model model) {
+        model.addAttribute("cintas", cintaDAO.listarTodasCompleto());
+        model.addAttribute("clientes", clienteDAO.findAll());
+        return "cintas";
+    }
+
+    @PostMapping("/api/crear-cintas")
+    @ResponseBody
+    public java.util.Map<String, Object> crearCintas(
+            @RequestParam("clienteId") int clienteId,
+            @RequestParam("tecnologia") String tecnologia,
+            @RequestParam("plantilla") String plantilla,
+            @RequestParam("numeroInicial") int numeroInicial,
+            @RequestParam("cantidad") int cantidad) {
+
+        java.util.Map<String, Object> resp = new java.util.HashMap<>();
+
+        int primer = plantilla.indexOf('-');
+        int ultimo = plantilla.lastIndexOf('-');
+        if (primer < 0) {
+            resp.put("status", "error");
+            resp.put("mensaje", "La plantilla debe incluir guiones (--) donde va el número.");
+            return resp;
+        }
+        // Los guiones deben ir juntos
+        for (int i = primer; i <= ultimo; i++) {
+            if (plantilla.charAt(i) != '-') {
+                resp.put("status", "error");
+                resp.put("mensaje", "Los guiones de la plantilla deben ir juntos.");
+                return resp;
+            }
+        }
+        if (cantidad < 1 || cantidad > 500) {
+            resp.put("status", "error");
+            resp.put("mensaje", "La cantidad debe estar entre 1 y 500.");
+            return resp;
+        }
+
+        String prefijo = plantilla.substring(0, primer);
+        String sufijo = plantilla.substring(ultimo + 1);
+        int ancho = ultimo - primer + 1;
+
+        java.util.List<String> barcodes = new java.util.ArrayList<>();
+        for (int i = 0; i < cantidad; i++) {
+            String numStr = String.format("%0" + ancho + "d", numeroInicial + i);
+            barcodes.add(prefijo + numStr + sufijo);
+        }
+
+        java.util.Map<String, Object> res = cintaDAO.crearCintasLote(barcodes, clienteId, tecnologia);
+        resp.put("status", "success");
+        resp.putAll(res); // creadas, omitidas
+        return resp;
+    }
+
 }

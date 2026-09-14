@@ -144,91 +144,35 @@
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark navbar-custom shadow-sm">
-    <div class="container-fluid">
-        <a class="navbar-brand fw-bold px-3" href="/">LTOTRACE</a>
-        <div class="navbar-nav ms-auto">
-            <a class="nav-link px-3" href="/clientes"><i class="bi bi-people"></i> Gestión de Clientes</a>
-            <a href="/usuarios" class="nav-link px-3">
-                <i class="bi bi-people"></i> Gestión de Usuarios
-            </a>
-            <a href="/logout" class="nav-link px-3">
-                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
-            </a>
-        </div>
-    </div>
-</nav>
+<div th:replace="~{fragments/barra :: rail('dashboard')}"></div>
 
 <div class="container-fluid p-0">
     <div class="row g-0">
 
-        <div class="sidebar p-3">
-            <div class="card border-0 shadow-sm mb-3">
-                <div class="card-body py-3 px-4">
-
-                    <div class="d-flex align-items-center justify-content-between">
-
-                        <div>
-                            <div class="text-muted small">TS4300</div>
-                            <div class="fw-semibold">Drive 1</div>
-                        </div>
-
-                        <div class="text-end">
-                            <div id="cintaBadge" class="display-6 fw-bold"
-                                 th:text="${cintaEnDrive} ?: '---'"
-                                 th:classappend="${cintaEnDrive} != null ? 'text-success' : 'text-secondary'">
-                            </div>
-                            <div class="small text-muted">
-                                Barcode actual
-                            </div>
-<!--                            estilo de como se ve el estado del robot-->
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-robot"></i> Robot:</span>
-                                <span id="robotBadge"
-                                      class="fw-bold"
-                                      th:classappend="${estadoRobot == 'Moving'} ? 'text-primary' : 'text-secondary'"
-                                      th:text="${estadoRobot}">
-                                </span>
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-            </div>
-
-            <h6 class="fw-bold mb-4 text-uppercase small text-muted">Ingresar Nueva Cinta</h6>
-            <form th:action="@{/registrar-cinta}" method="post" class="card p-4 border-0 shadow-sm">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">BARCODE</label>
-                    <input type="text" name="barcode" class="form-control" placeholder="ABC001" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">CLIENTE</label>
-                    <select name="clienteId" class="form-select" required>
-                        <option value="">Seleccionar...</option>
-                        <option th:each="cl : ${clientes}" th:value="${cl.id}" th:text="${cl.nombre}"></option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">TECNOLOGÍA</label>
-                    <select name="tecnologia" class="form-select" required>
-                        <option value="LTO-6">LTO-6</option>
-                        <option value="LTO-7" selected>LTO-7</option>
-                        <option value="LTO-8">LTO-8</option>
-                        <option value="LTO-9">LTO-9</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 mt-3 shadow-sm">Registrar Medio</button>
-            </form>
-        </div>
-
-       <div class="main-wrapper mt-1"> <!-- en este lugar podemos controlar que tan alto está el div de cintas de la semana-->
+               <div class="main-wrapper mt-1"> <!-- en este lugar podemos controlar que tan alto está el div de cintas de la semana-->
 
             <div class="sticky-header ">
-                <div class="d-flex justify-content-between align-items-center py-2">
-                    <h5 class="fw-bold m-0 text-dark">Panel de Control LTO</h5>
+                <div class="d-flex justify-content-between align-items-center py-2 flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <h5 class="fw-bold m-0 text-dark">Panel de Control LTO</h5>
+                        <div class="drive-strip d-flex align-items-center gap-3">
+                            <div class="drive-item">
+                                <span class="drive-label">TS4300 · Drive 1</span>
+                            </div>
+                            <div class="drive-item">
+                                <span class="drive-label">Barcode</span>
+                                <span id="cintaBadge" class="drive-value"
+                                      th:text="${cintaEnDrive} ?: '---'"
+                                      th:classappend="${cintaEnDrive} != null ? 'text-success' : 'text-secondary'"></span>
+                            </div>
+                            <div class="drive-item">
+                                <span class="drive-label"><i class="bi bi-robot"></i> Robot</span>
+                                <span class="drive-value"><span id="robotBadge" class="fw-bold"
+                                      th:classappend="${estadoRobot == 'Moving'} ? 'text-primary' : 'text-secondary'"
+                                      th:text="${estadoRobot}"></span></span>
+                            </div>
+                        </div>
+                    </div>
                     <form th:action="@{/}" method="get" class="d-flex gap-2">
                         <select name="clienteId" class="form-select form-select-sm" style="width: 180px;" onchange="this.form.submit()">
                             <option value="">Todos los Clientes</option>
@@ -258,7 +202,7 @@
                     <input type="text" id="buscadorCintas" class="form-control form-control-sm"
                            style="max-width:280px" placeholder="Buscar barcode, cliente o Volume ID...">
                 </div>
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 pb-5" id="gridInventario"> <div class="col" th:each="cinta : ${cintas}">                    <div class="card h-100 shadow-sm tape-card border-0" th:classappend="'border-' + ${cinta.tecnologia}">
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4 pb-5" id="gridInventario"> <div class="col" th:each="cinta : ${cintas}">                    <div class="card h-100 shadow-sm tape-card border-0" th:classappend="'border-' + ${cinta.tecnologia}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="badge tech-badge px-2" th:text="${cinta.tecnologia}"></span>

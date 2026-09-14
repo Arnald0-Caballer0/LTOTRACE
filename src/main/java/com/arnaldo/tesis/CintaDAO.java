@@ -572,4 +572,89 @@ public class CintaDAO {
         return null;
     }
 
+    // Trae TODAS las cintas con TODOS sus campos (para el módulo Cintas > Ver cintas)
+    public List<java.util.Map<String, Object>> listarTodasCompleto() {
+        List<java.util.Map<String, Object>> lista = new ArrayList<>();
+        String sql = "SELECT c.barcode, c.volume_id, c.tecnologia, c.ubicacion, c.estado, " +
+                "c.contador_usos, c.fecha_primer_uso, c.es_semanal, c.dia_semana, " +
+                "c.ultima_modificacion, cl.nombre AS cliente " +
+                "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id ORDER BY c.barcode";
+
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        java.time.format.DateTimeFormatter fmtFecha = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                java.util.Map<String, Object> m = new java.util.HashMap<>();
+                m.put("barcode", rs.getString("barcode"));
+                m.put("volumeId", rs.getString("volume_id"));
+                m.put("tecnologia", rs.getString("tecnologia"));
+                m.put("ubicacion", rs.getString("ubicacion"));
+                m.put("estado", rs.getString("estado"));
+                m.put("cliente", rs.getString("cliente"));
+                m.put("usos", rs.getInt("contador_usos"));
+                m.put("esSemanal", rs.getBoolean("es_semanal"));
+                m.put("diaSemana", rs.getString("dia_semana"));
+
+                java.sql.Timestamp fpu = rs.getTimestamp("fecha_primer_uso");
+                m.put("fechaPrimerUso", fpu != null ? fpu.toLocalDateTime().format(fmtFecha) : "");
+                java.sql.Timestamp um = rs.getTimestamp("ultima_modificacion");
+                m.put("ultimaModificacion", um != null ? um.toLocalDateTime().format(fmt) : "");
+
+                lista.add(m);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error en listarTodasCompleto: " + e.getMessage());
+        }
+        return lista;
+    }
+    // Crea un lote de cintas en una sola transacción. Omite las que ya existan.
+    public java.util.Map<String, Object> crearCintasLote(java.util.List<String> barcodes, int clienteId, String tecnologia) {
+        java.util.List<String> creadas = new ArrayList<>();
+        java.util.List<String> omitidas = new ArrayList<>();
+
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            String check = "SELECT 1 FROM cintas WHERE barcode = ?";
+            String insert = "INSERT INTO cintas (barcode, volume_id, cliente_id, ubicacion, tecnologia) " +
+                    "VALUES (?, 'PENDIENTE', ?, 'ARMARIO', ?)";
+
+            for (String bc : barcodes) {
+                boolean existe;
+                try (PreparedStatement ps = conn.prepareStatement(check)) {
+                    ps.setString(1, bc);
+                    existe = ps.executeQuery().next();
+                }
+                if (existe) { omitidas.add(bc); continue; }
+
+                try (PreparedStatement ps = conn.prepareStatement(insert)) {
+                    ps.setString(1, bc);
+                    ps.setInt(2, clienteId);
+                    ps.setString(3, tecnologia);
+                    ps.executeUpdate();
+                }
+                registrarMovimiento(conn, bc, "ALTA", "Cinta creada por lote (" + tecnologia + ")", null);
+                creadas.add(bc);
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            rollback(conn);
+            System.err.println("Error al crear lote de cintas: " + e.getMessage());
+        } finally {
+            cerrar(conn);
+        }
+
+        java.util.Map<String, Object> res = new java.util.HashMap<>();
+        res.put("creadas", creadas);
+        res.put("omitidas", omitidas);
+        return res;
+    }
+
+
 }
