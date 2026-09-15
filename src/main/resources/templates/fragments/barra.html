@@ -2,11 +2,6 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!--
-  Barra lateral de navegación de LTOTRACE (reutilizable).
-  Uso:  <div th:replace="~{fragments/barra :: rail('dashboard')}"></div>
-  Módulos activos: 'dashboard', 'cintas', 'clientes', 'usuarios', 'configuracion'.
--->
 <nav class="lto-rail" th:fragment="rail(activo)">
 
     <div class="lto-rail-top">
@@ -42,6 +37,10 @@
 
         <li th:classappend="${activo == 'usuarios'} ? 'activo'">
             <a href="/usuarios"><i class="bi bi-person-gear"></i><span class="lto-rail-label">Usuarios</span></a>
+        </li>
+
+        <li th:classappend="${activo == 'auditoria'} ? 'activo'">
+            <a href="/auditoria"><i class="bi bi-journal-text"></i><span class="lto-rail-label">Auditoría</span></a>
         </li>
 
         <li class="tiene-sub" th:classappend="${activo == 'configuracion'} ? 'activo'">

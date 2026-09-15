@@ -4,8 +4,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 /**
- * Usuario del sistema. Las contraseñas se guardan HASHEADAS con BCrypt,
- * nunca en texto plano (requisito de seguridad, ISO 27001).
+ * Usuario del sistema. El rol ahora está normalizado (FK a la tabla roles).
+ * Se conserva getRolCodigo() como método de compatibilidad para los controles
+ * de acceso (que comparan contra "ADMIN"/"OPERADOR").
  */
 @Entity
 @Table(name = "usuarios")
@@ -24,8 +25,9 @@ public class Usuario {
     @Column(name = "nombre_completo", length = 120)
     private String nombreCompleto;
 
-    @Column(nullable = false, length = 20)
-    private String rol = "OPERADOR";
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "rol_id")
+    private Rol rol;
 
     @Column(nullable = false)
     private Boolean activo = true;
@@ -33,8 +35,17 @@ public class Usuario {
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
-    public Usuario() {
-    }
+    public Usuario() {}
+
+    // --- Rol (con métodos de compatibilidad) ---
+    public Rol getRol() { return rol; }
+    public void setRol(Rol rol) { this.rol = rol; }
+
+    /** Código del rol (ADMIN/OPERADOR) para los controles de acceso. */
+    public String getRolCodigo() { return rol != null ? rol.getCodigo() : null; }
+
+    /** Nombre para mostrar del rol (Administrador/Operador). */
+    public String getRolNombre() { return rol != null ? rol.getNombre() : null; }
 
     // --- Getters y Setters ---
     public Long getId() { return id; }
@@ -48,9 +59,6 @@ public class Usuario {
 
     public String getNombreCompleto() { return nombreCompleto; }
     public void setNombreCompleto(String nombreCompleto) { this.nombreCompleto = nombreCompleto; }
-
-    public String getRol() { return rol; }
-    public void setRol(String rol) { this.rol = rol; }
 
     public Boolean getActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }

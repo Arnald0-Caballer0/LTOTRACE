@@ -126,8 +126,8 @@
                             <td th:text="${u.nombreCompleto} ?: '—'"></td>
                             <td>
                                 <span class="pill-rol"
-                                      th:classappend="${u.rol == 'ADMIN'} ? 'admin' : 'operador'"
-                                      th:text="${u.rol == 'ADMIN'} ? 'Administrador' : 'Operador'"></span>
+                                      th:classappend="${u.rolCodigo  == 'ADMIN'} ? 'admin' : 'operador'"
+                                      th:text="${u.rolCodigo  == 'ADMIN'} ? 'Administrador' : 'Operador'"></span>
                             </td>
                             <td class="text-muted small">local</td>
                             <td>

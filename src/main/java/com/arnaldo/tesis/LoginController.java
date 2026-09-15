@@ -21,36 +21,36 @@ public class LoginController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private AuditoriaService auditoria;
+
     // Muestra la pantalla de login
     @GetMapping("/login")
     public String mostrarLogin() {
         return "login";
     }
 
-    // Procesa el login
     @PostMapping("/login")
     public String procesarLogin(@RequestParam("username") String username,
                                 @RequestParam("password") String password,
                                 HttpServletRequest request,
                                 Model model) {
-
         Usuario usuario = authService.autenticar(username, password);
-
         if (usuario != null) {
-            // Renovamos la sesión y guardamos al usuario
             HttpSession session = request.getSession(true);
             session.setAttribute(SESSION_USER, usuario);
+            auditoria.registrar(usuario.getUsername(), "LOGIN", "Inicio de sesión exitoso", request.getRemoteAddr());
             return "redirect:/";
         }
-
-        // Credenciales inválidas: volvemos al login con un mensaje
+        auditoria.registrar(username, "LOGIN_FALLIDO", "Credenciales incorrectas", request.getRemoteAddr());
         model.addAttribute("error", "Usuario o contraseña incorrectos.");
         return "login";
     }
 
-    // Cierra la sesión
     @GetMapping("/logout")
     public String logout(HttpSession session) {
+        Usuario u = (Usuario) session.getAttribute(SESSION_USER);
+        if (u != null) auditoria.registrar(u.getUsername(), "LOGOUT", "Cierre de sesión", null);
         session.invalidate();
         return "redirect:/login?logout";
     }

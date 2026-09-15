@@ -23,12 +23,18 @@ public class UsuarioController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private AuditoriaService auditoria;
+
+    @Autowired
+    private RolRepository rolRepository;
+
     /** Verifica que el usuario en sesión tenga rol ADMIN. */
     private boolean esAdmin(HttpSession session) {
         Usuario u = (session != null)
                 ? (Usuario) session.getAttribute(LoginController.SESSION_USER)
                 : null;
-        return u != null && "ADMIN".equals(u.getRol());
+        return u != null && "ADMIN".equals(u.getRolCodigo());
     }
 
     // Lista de usuarios
@@ -65,10 +71,12 @@ public class UsuarioController {
         nuevo.setUsername(user);
         nuevo.setNombreCompleto(nombreCompleto);
         nuevo.setPasswordHash(authService.hashear(password)); // Hash BCrypt automático
-        nuevo.setRol("ADMIN".equals(rol) ? "ADMIN" : "OPERADOR");
+        String codigoRol = "ADMIN".equals(rol) ? "ADMIN" : "OPERADOR";
+        nuevo.setRol(rolRepository.findByCodigo(codigoRol).orElse(null));
         nuevo.setActivo(true);
         nuevo.setFechaCreacion(LocalDateTime.now());
         usuarioRepository.save(nuevo);
+        auditoria.registrar("USUARIO_CREADO", "Usuario creado: " + nuevo.getUsername() + " (" + nuevo.getRolCodigo() + ")");
 
         return "redirect:/usuarios?ok=creado";
     }
@@ -88,6 +96,8 @@ public class UsuarioController {
             }
             u.setActivo(!Boolean.TRUE.equals(u.getActivo()));
             usuarioRepository.save(u);
+            auditoria.registrar("USUARIO_ESTADO", "Usuario " + u.getUsername() + (u.getActivo() ? " activado" : " desactivado"));
+
         }
         return "redirect:/usuarios?ok=estado";
     }
@@ -106,7 +116,9 @@ public class UsuarioController {
             Usuario u = opt.get();
             u.setPasswordHash(authService.hashear(password));
             usuarioRepository.save(u);
+            auditoria.registrar("USUARIO_PASSWORD", "Contraseña restablecida: " + u.getUsername());
         }
+
         return "redirect:/usuarios?ok=password";
     }
 }

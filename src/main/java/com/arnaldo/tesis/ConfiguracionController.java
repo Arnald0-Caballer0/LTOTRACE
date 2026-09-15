@@ -31,9 +31,12 @@ public class ConfiguracionController {
     @Autowired
     private LibraryService libraryService;
 
+    @Autowired
+    private AuditoriaService auditoria;
+
     private boolean esAdmin(HttpSession session) {
         Usuario u = (session != null) ? (Usuario) session.getAttribute(LoginController.SESSION_USER) : null;
-        return u != null && "ADMIN".equals(u.getRol());
+        return u != null && "ADMIN".equals(u.getRolCodigo());
     }
 
     // ---- Listado de tecnologías ----
@@ -82,7 +85,7 @@ public class ConfiguracionController {
         cfg.set("ibmi.usuario", p.get("ibmi_usuario"));
         if (p.get("ibmi_password") != null && !p.get("ibmi_password").isBlank())
             cfg.setSecreto("ibmi.password", p.get("ibmi_password"));
-
+        auditoria.registrar("CONFIG_LIBRERIA", "Actualizó la configuración de conexión (TS4300 / IBM i)");
         return "redirect:/configuracion/libreria?ok=1";
     }
 
@@ -115,7 +118,8 @@ public class ConfiguracionController {
         t.setGeneracion(generacion);
         t.setCapacidadGb(capacidadGb);
         tecnologiaRepo.save(t);
-
+        auditoria.registrar("CONFIG_TECNOLOGIA",
+                (id != null ? "Editó" : "Creó") + " la tecnología " + t.getNombre() + " (" + t.getCapacidadGb() + " GB)");
         return "redirect:/configuracion/tecnologias?ok=" + (id != null ? "editado" : "creado");
     }
 
@@ -131,6 +135,7 @@ public class ConfiguracionController {
                 return "redirect:/configuracion/tecnologias?error=enuso";
             }
             tecnologiaRepo.deleteById(id);
+            auditoria.registrar("CONFIG_TECNOLOGIA", "Eliminó una tecnología LTO");
         }
         return "redirect:/configuracion/tecnologias?ok=eliminado";
     }
