@@ -193,8 +193,12 @@ public class CintaDAO {
         List<Cinta> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
                 "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, " +
-                        "c.contador_usos, cl.promedio_gb_backup, cl.dias_entre_backups " +
-                        "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE 1=1"
+                        "c.contador_usos, cl.promedio_gb_backup, cl.dias_entre_backups, " +
+                        "COALESCE(t.capacidad_gb, 0) AS capacidad_gb " +
+                        "FROM cintas c " +
+                        "LEFT JOIN clientes cl ON c.cliente_id = cl.id " +
+                        "LEFT JOIN tecnologias_lto t ON UPPER(TRIM(c.tecnologia)) = UPPER(t.nombre) " +
+                        "WHERE 1=1"
         );
 
         if (clienteId != null) sql.append(" AND c.cliente_id = ?");
@@ -214,10 +218,10 @@ public class CintaDAO {
                         rs.getString("ubicacion"), rs.getString("estado"),
                         rs.getString("cliente"), rs.getString("tecnologia")
                 );
-                // Datos para desgaste y llenado
                 cinta.setContadorUsos(rs.getInt("contador_usos"));
                 cinta.setPromedioGbBackup(rs.getInt("promedio_gb_backup"));
                 cinta.setDiasEntreBackups(rs.getInt("dias_entre_backups"));
+                cinta.setCapacidadGb(rs.getInt("capacidad_gb")); // capacidad desde tecnologias_lto
                 lista.add(cinta);
             }
         } catch (SQLException e) {
@@ -225,6 +229,7 @@ public class CintaDAO {
         }
         return lista;
     }
+
 
 
     public List<Cinta> listarTodas() {
@@ -655,6 +660,17 @@ public class CintaDAO {
         res.put("omitidas", omitidas);
         return res;
     }
-
-
+    // Cuenta cuántas cintas usan una tecnología (para el borrado seguro en Configuración)
+    public int contarPorTecnologia(String tecnologia) {
+        String sql = "SELECT COUNT(*) FROM cintas WHERE UPPER(TRIM(tecnologia)) = UPPER(?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, tecnologia != null ? tecnologia.trim() : "");
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) return rs.getInt(1);
+        } catch (SQLException e) {
+            System.err.println("Error en contarPorTecnologia: " + e.getMessage());
+        }
+        return 0;
+    }
 }

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>LTOTRACE · Conexión librería</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/lto.css">
+    <style>
+        body, html { height: 100%; overflow: auto; font-family: 'Inter','Segoe UI',sans-serif; }
+        .modulo-wrapper { padding: 1.25rem 1.5rem; }
+
+        .conn-card { background:#fff; border:1px solid var(--lto-borde); border-radius:14px; box-shadow:0 2px 14px rgba(52,55,52,.06); height:100%; display:flex; flex-direction:column; overflow:hidden; }
+        .conn-head { padding: .9rem 1.25rem; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--lto-borde); background:#fafbf8; }
+        .conn-head .titulo { display:flex; align-items:center; gap:10px; font-weight:700; color:var(--lto-oscuro); }
+        .conn-head .titulo i { font-size:1.4rem; color:var(--lto-azul); }
+        .conn-sub { font-size:.75rem; color:var(--lto-gris); font-weight:500; }
+        .conn-body { padding: 1.25rem; flex-grow:1; }
+        .conn-foot { padding: .75rem 1.25rem; border-top:1px solid var(--lto-borde); display:flex; align-items:center; justify-content:space-between; }
+
+        /* Indicador de estado */
+        .estado-conn { display:inline-flex; align-items:center; gap:7px; font-size:.8rem; font-weight:600; padding:3px 10px; border-radius:20px; }
+        .estado-conn .punto { width:8px; height:8px; border-radius:50%; }
+        .estado-conn.sinver { color:var(--lto-gris); background:#f0f1ec; }
+        .estado-conn.sinver .punto { background:#b8bcb2; }
+        .estado-conn.ok { color:#2e7d4f; background:rgba(46,158,91,.12); }
+        .estado-conn.ok .punto { background:#2e9e5b; }
+        .estado-conn.fail { color:#c0392b; background:rgba(192,57,43,.10); }
+        .estado-conn.fail .punto { background:#e74c3c; }
+        .estado-conn.verificando { color:var(--lto-azul); background:rgba(112,161,189,.12); }
+
+        .seguridad-nota { color:var(--lto-gris); font-size:.8rem; display:flex; align-items:center; gap:5px; }
+        .form-label { font-size:.78rem; }
+    </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/barra :: rail('configuracion')}"></div>
+
+<div class="app-content">
+    <div class="modulo-wrapper">
+
+        <header class="mb-3">
+            <h4 class="fw-bold m-0"><i class="bi bi-hdd-network"></i> Conexión a la librería</h4>
+            <div class="seguridad-nota mt-1"><i class="bi bi-shield-lock"></i> Contraseñas cifradas (AES). El botón "Probar" usa la configuración ya guardada.</div>
+        </header>
+
+        <div th:if="${param.ok != null}" class="alert alert-success py-2">Configuración guardada correctamente.</div>
+
+        <form th:action="@{/configuracion/libreria/guardar}" method="post">
+            <div class="row g-4">
+
+                <!-- ===== TS4300 ===== -->
+                <div class="col-lg-6">
+                    <div class="conn-card">
+                        <div class="conn-head">
+                            <div>
+                                <div class="titulo"><i class="bi bi-hdd-stack"></i> Librería TS4300</div>
+                                <div class="conn-sub">Robot y drives de cintas físicas</div>
+                            </div>
+                            <span id="estadoTs" class="estado-conn sinver"><span class="punto"></span> Sin verificar</span>
+                        </div>
+                        <div class="conn-body">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Dirección IP</label>
+                                <input type="text" name="ts_ip" class="form-control" th:value="${ts_ip}" placeholder="192.168.1.20">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Usuario</label>
+                                <input type="text" name="ts_usuario" class="form-control" th:value="${ts_usuario}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Contraseña</label>
+                                <input type="password" name="ts_password" class="form-control" autocomplete="new-password"
+                                       th:placeholder="${ts_passSet} ? '•••••• (dejar vacío para no cambiar)' : 'Escribir contraseña'">
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="form-label fw-bold">Drive (LogicalNumber)</label>
+                                    <input type="text" name="ts_drive" class="form-control" th:value="${ts_drive}" placeholder="3">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label fw-bold">Partición</label>
+                                    <input type="text" name="ts_particion" class="form-control" th:value="${ts_particion}" placeholder="1">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="conn-foot">
+                            <span class="conn-sub"><i class="bi bi-hdd-network"></i> Puerto 3031 (REST)</span>
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-bold"
+                                    onclick="probar('ts4300', 'estadoTs')">
+                                <i class="bi bi-wifi"></i> Probar conexión
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== IBM i ===== -->
+                <div class="col-lg-6">
+                    <div class="conn-card">
+                        <div class="conn-head">
+                            <div>
+                                <div class="titulo"><i class="bi bi-server"></i> Servidor IBM i</div>
+                                <div class="conn-sub">Lectura de Volume IDs (CHKTAP)</div>
+                            </div>
+                            <span id="estadoIbmi" class="estado-conn sinver"><span class="punto"></span> Sin verificar</span>
+                        </div>
+                        <div class="conn-body">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Host / IP</label>
+                                <input type="text" name="ibmi_host" class="form-control" th:value="${ibmi_host}" placeholder="***IP***">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Usuario</label>
+                                <input type="text" name="ibmi_usuario" class="form-control" th:value="${ibmi_usuario}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Contraseña</label>
+                                <input type="password" name="ibmi_password" class="form-control" autocomplete="new-password"
+                                       th:placeholder="${ibmi_passSet} ? '•••••• (dejar vacío para no cambiar)' : 'Escribir contraseña'">
+                            </div>
+                            <div class="alert alert-light border small mb-0 mt-4">
+                                <i class="bi bi-info-circle text-primary"></i>
+                                Se usa para ejecutar <code>CHKTAP</code> y obtener el Volume ID real de cada cinta montada.
+                            </div>
+                        </div>
+                        <div class="conn-foot">
+                            <span class="conn-sub"><i class="bi bi-server"></i> Conexión JT400</span>
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-bold"
+                                    onclick="probar('ibmi', 'estadoIbmi')">
+                                <i class="bi bi-wifi"></i> Probar conexión
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="d-flex justify-content-end my-4">
+                <button type="submit" class="btn btn-primary fw-bold px-4"><i class="bi bi-check-lg"></i> Guardar configuración</button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function probar(sistema, badgeId) {
+        const badge = document.getElementById(badgeId);
+        badge.className = 'estado-conn verificando';
+        badge.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:.8rem;height:.8rem;"></span> Probando...';
+
+        fetch('/configuracion/libreria/probar/' + sistema, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                if (d.ok) {
+                    badge.className = 'estado-conn ok';
+                    badge.innerHTML = '<span class="punto"></span> Conectado';
+                } else {
+                    badge.className = 'estado-conn fail';
+                    badge.innerHTML = '<span class="punto"></span> Sin conexión';
+                }
+            })
+            .catch(() => {
+                badge.className = 'estado-conn fail';
+                badge.innerHTML = '<span class="punto"></span> Error';
+            });
+    }
+</script>
+</body>
+</html>

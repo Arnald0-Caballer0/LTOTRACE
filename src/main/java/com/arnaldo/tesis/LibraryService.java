@@ -24,14 +24,12 @@ import java.util.Map;
 @Service
 public class LibraryService {
 
-    @Value("${library.ts4300.ip}")
     private String ip;
-
-    @Value("${library.ts4300.user}")
     private String user;
-
-    @Value("${library.ts4300.password}")
     private String pass;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private ConfiguracionService cfg;
 
     private final RestTemplate restTemplate;
 
@@ -55,9 +53,14 @@ public class LibraryService {
     }
 
     private String obtenerToken() {
-        // El login sigue siendo v1 según el estándar de IBM
+        // Cargamos la conexión desde la configuración cifrada
+        ip = cfg.get("ts4300.ip");
+        user = cfg.get("ts4300.usuario");
+        pass = cfg.getSecreto("ts4300.password");
+
         String url = "https://" + ip + ":3031/v1/login";
         Map<String, String> loginData = Map.of("username", user, "password", pass);
+
         try {
             ResponseEntity<Map> response = restTemplate.postForEntity(url, loginData, Map.class);
             if (response.getStatusCode() == HttpStatus.CREATED && response.getBody() != null) {
@@ -177,7 +180,7 @@ public class LibraryService {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             // 2. OBTENER INVENTARIO (Usando tu RestTemplate)
-            String urlInventario = "https://" + ip + ":3031/rest/partition/inventory?partitionNum=1";
+            String urlInventario = "https://" + ip + ":3031/rest/partition/inventory?partitionNum=\" + cfg.get(\"ts4300.particion\")";
             HttpEntity<String> entityGet = new HttpEntity<>(headers);
             ResponseEntity<String> responseInv = restTemplate.exchange(urlInventario, HttpMethod.GET, entityGet, String.class);
             String inventarioJson = responseInv.getBody();
@@ -193,7 +196,7 @@ public class LibraryService {
             boolean esLaMismaCinta = barcode.equalsIgnoreCase(cintaActualEnDrive);
 
             String jsonPayload = "";
-            String driveAddress = "3"; //Especificar Drive
+            String driveAddress = cfg.get("ts4300.drive");
             String accion = ""; // LOAD (carga = uso) o UNLOAD (descarga)
 
             if (esLaMismaCinta) {
@@ -251,6 +254,15 @@ public class LibraryService {
         } catch (Exception e) {
             e.printStackTrace();
             return "Excepción interna al comunicarse con TS4300: " + e.getMessage();
+        }
+    }
+    // Prueba la conexión a la TS4300 con los datos guardados (para el botón "Probar conexión")
+    public boolean probarConexion() {
+        try {
+            return obtenerToken() != null;
+        } catch (Exception e) {
+            System.err.println("Error probando TS4300: " + e.getMessage());
+            return false;
         }
     }
 

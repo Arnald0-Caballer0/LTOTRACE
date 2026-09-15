@@ -4,9 +4,8 @@
 
 <!--
   Barra lateral de navegación de LTOTRACE (reutilizable).
-  Uso en cada página:
-     <div th:replace="~{fragments/barra :: rail('dashboard')}"></div>
-  El parámetro marca el módulo activo: 'dashboard', 'cintas', 'clientes' o 'usuarios'.
+  Uso:  <div th:replace="~{fragments/barra :: rail('dashboard')}"></div>
+  Módulos activos: 'dashboard', 'cintas', 'clientes', 'usuarios', 'configuracion'.
 -->
 <nav class="lto-rail" th:fragment="rail(activo)">
 
@@ -18,12 +17,10 @@
     </div>
 
     <ul class="lto-rail-menu">
-        <!-- Dashboard -->
         <li th:classappend="${activo == 'dashboard'} ? 'activo'">
             <a href="/"><i class="bi bi-grid-1x2"></i><span class="lto-rail-label">Dashboard</span></a>
         </li>
 
-        <!-- Cintas (con sub-opciones) -->
         <li class="tiene-sub" th:classappend="${activo == 'cintas'} ? 'activo'">
             <a href="/cintas"><i class="bi bi-hdd-stack"></i><span class="lto-rail-label">Cintas</span></a>
             <div class="lto-flyout">
@@ -33,7 +30,6 @@
             </div>
         </li>
 
-        <!-- Cliente (con sub-opciones) -->
         <li class="tiene-sub" th:classappend="${activo == 'clientes'} ? 'activo'">
             <a href="/clientes"><i class="bi bi-people"></i><span class="lto-rail-label">Cliente</span></a>
             <div class="lto-flyout">
@@ -44,9 +40,17 @@
             </div>
         </li>
 
-        <!-- Usuarios -->
         <li th:classappend="${activo == 'usuarios'} ? 'activo'">
             <a href="/usuarios"><i class="bi bi-person-gear"></i><span class="lto-rail-label">Usuarios</span></a>
+        </li>
+
+        <li class="tiene-sub" th:classappend="${activo == 'configuracion'} ? 'activo'">
+            <a href="/configuracion/tecnologias"><i class="bi bi-gear"></i><span class="lto-rail-label">Configuración</span></a>
+            <div class="lto-flyout">
+                <div class="lto-flyout-title">Configuración</div>
+                <a href="/configuracion/tecnologias"><i class="bi bi-hdd"></i> Tecnologías LTO</a>
+                <a href="/configuracion/libreria"><i class="bi bi-hdd-network"></i> Conexión librería</a>
+            </div>
         </li>
     </ul>
 
@@ -57,11 +61,7 @@
     <script>
         (function () {
             var t = document.getElementById('ltoRailToggle');
-            if (t) {
-                t.addEventListener('click', function () {
-                    document.body.classList.toggle('rail-expanded');
-                });
-            }
+            if (t) { t.addEventListener('click', function () { document.body.classList.toggle('rail-expanded'); }); }
         })();
     </script>
 </nav>

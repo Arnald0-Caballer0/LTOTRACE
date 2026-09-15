@@ -44,13 +44,15 @@ public class Cinta {
     @Column(name = "ultima_modificacion", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime ultimaModificacion;
 
-    // --- NUEVO: datos de solo-vista para desgaste y llenado ---
+    // --- Datos de solo-vista para desgaste y llenado ---
     @Transient
     private int contadorUsos;
     @Transient
     private Integer promedioGbBackup;   // viene del cliente
     @Transient
     private Integer diasEntreBackups;   // viene del cliente
+    @Transient
+    private int capacidadGb;            // viene de la tabla tecnologias_lto
 
     // 1. Constructor vacío
     public Cinta() {
@@ -70,15 +72,9 @@ public class Cinta {
     // CÁLCULOS DE DESGASTE Y LLENADO
     // ==========================================================
 
-    /** Capacidad nativa de la cinta en GB, según su tecnología. */
+    /** Capacidad nativa en GB (ahora viene de la tabla tecnologias_lto). */
     public int getCapacidadGb() {
-        if (tecnologia == null) return 0;
-        switch (tecnologia.toUpperCase().trim()) {
-            case "LTO-7": return 6000;
-            case "LTO-8": return 12000;
-            case "LTO-9": return 18000;
-            default: return 0;
-        }
+        return capacidadGb;
     }
 
     // ---- Desgaste (montajes vs vida útil) ----
@@ -101,7 +97,6 @@ public class Cinta {
     }
 
     // ---- Llenado (datos escritos vs capacidad) ----
-    /** Solo se puede estimar si el cliente tiene configurado el GB/backup y conocemos la capacidad. */
     public boolean isLlenadoCalculable() {
         return promedioGbBackup != null && promedioGbBackup > 0 && getCapacidadGb() > 0;
     }
@@ -124,12 +119,11 @@ public class Cinta {
         return "bg-success";
     }
 
-    /** Fecha estimada en que la cinta se llenará (o null si no se puede calcular). */
     public String getFechaEstimadaLlenado() {
         if (!isLlenadoCalculable() || diasEntreBackups == null || diasEntreBackups <= 0) return null;
         int usosTotales = (int) Math.ceil((double) getCapacidadGb() / promedioGbBackup);
         int usosRestantes = usosTotales - contadorUsos;
-        if (usosRestantes <= 0) return null; // ya está llena
+        if (usosRestantes <= 0) return null;
         long diasRestantes = (long) usosRestantes * diasEntreBackups;
         LocalDate fecha = LocalDate.now().plusDays(diasRestantes);
         return fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
@@ -180,4 +174,6 @@ public class Cinta {
 
     public Integer getDiasEntreBackups() { return diasEntreBackups; }
     public void setDiasEntreBackups(Integer diasEntreBackups) { this.diasEntreBackups = diasEntreBackups; }
+
+    public void setCapacidadGb(int capacidadGb) { this.capacidadGb = capacidadGb; }
 }
