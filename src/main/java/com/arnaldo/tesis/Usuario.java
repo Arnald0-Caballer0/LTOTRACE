@@ -2,11 +2,14 @@ package com.arnaldo.tesis;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
- * Usuario del sistema. El rol ahora está normalizado (FK a la tabla roles).
- * Se conserva getRolCodigo() como método de compatibilidad para los controles
- * de acceso (que comparan contra "ADMIN"/"OPERADOR").
+ * Usuario del sistema. Incluye rol (FK) y permisos:
+ *  - alcance de clientes (ve todos, o solo los asignados)
+ *  - capacidades (mover / crear / retirar cintas)
+ * El ADMIN siempre tiene acceso total (los permisos solo limitan a operadores).
  */
 @Entity
 @Table(name = "usuarios")
@@ -35,17 +38,35 @@ public class Usuario {
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
+    // --- Permisos ---
+    @Column(name = "ve_todos_clientes")
+    private Boolean veTodosClientes = true;
+
+    @Column(name = "puede_mover_cintas")
+    private Boolean puedeMoverCintas = true;
+
+    @Column(name = "puede_crear_cintas")
+    private Boolean puedeCrearCintas = true;
+
+    @Column(name = "puede_retirar_cintas")
+    private Boolean puedeRetirarCintas = true;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "usuario_cliente",
+            joinColumns = @JoinColumn(name = "usuario_id"),
+            inverseJoinColumns = @JoinColumn(name = "cliente_id"))
+    private Set<Cliente> clientesAsignados = new HashSet<>();
+
     public Usuario() {}
 
-    // --- Rol (con métodos de compatibilidad) ---
+    // --- Rol (compatibilidad) ---
     public Rol getRol() { return rol; }
     public void setRol(Rol rol) { this.rol = rol; }
-
-    /** Código del rol (ADMIN/OPERADOR) para los controles de acceso. */
     public String getRolCodigo() { return rol != null ? rol.getCodigo() : null; }
-
-    /** Nombre para mostrar del rol (Administrador/Operador). */
     public String getRolNombre() { return rol != null ? rol.getNombre() : null; }
+
+    /** True si es ADMIN (acceso total). */
+    public boolean isAdmin() { return "ADMIN".equals(getRolCodigo()); }
 
     // --- Getters y Setters ---
     public Long getId() { return id; }
@@ -65,4 +86,19 @@ public class Usuario {
 
     public LocalDateTime getFechaCreacion() { return fechaCreacion; }
     public void setFechaCreacion(LocalDateTime fechaCreacion) { this.fechaCreacion = fechaCreacion; }
+
+    public Boolean getVeTodosClientes() { return veTodosClientes; }
+    public void setVeTodosClientes(Boolean veTodosClientes) { this.veTodosClientes = veTodosClientes; }
+
+    public Boolean getPuedeMoverCintas() { return puedeMoverCintas; }
+    public void setPuedeMoverCintas(Boolean puedeMoverCintas) { this.puedeMoverCintas = puedeMoverCintas; }
+
+    public Boolean getPuedeCrearCintas() { return puedeCrearCintas; }
+    public void setPuedeCrearCintas(Boolean puedeCrearCintas) { this.puedeCrearCintas = puedeCrearCintas; }
+
+    public Boolean getPuedeRetirarCintas() { return puedeRetirarCintas; }
+    public void setPuedeRetirarCintas(Boolean puedeRetirarCintas) { this.puedeRetirarCintas = puedeRetirarCintas; }
+
+    public Set<Cliente> getClientesAsignados() { return clientesAsignados; }
+    public void setClientesAsignados(Set<Cliente> clientesAsignados) { this.clientesAsignados = clientesAsignados; }
 }

@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpSession;
 import com.ibm.as400.access.AS400;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -23,21 +24,25 @@ public class CintaController {
     private ClienteDAO clienteDAO;
     @Autowired
     private LibraryService libraryService;
+    @Autowired
+    private PermisoService permisoService;
 
 
     @GetMapping("/")
     public String index(@RequestParam(name = "clienteId", required = false) Integer clienteId,
-                        @RequestParam(name = "tecnologia", required = false) String tecnologia, Model model) {
+                        @RequestParam(name = "tecnologia", required = false) String tecnologia, Model model, HttpSession session) {
+
+        java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
 
         String techFilter = (tecnologia != null && !tecnologia.isEmpty()) ? tecnologia : null;
 
         // CAMBIO CLAVE: Aquí debe llamar a listarSemanalesManual
         model.addAttribute("cintasSemanales", cintaDAO.listarSemanalesManual(clienteId, techFilter));
 
-        // El inventario completo sigue igual
-        model.addAttribute("cintas", cintaDAO.filtrarCintas(clienteId, techFilter));
+        // El inventario completo (con alcance de clientes)
+        model.addAttribute("cintas", cintaDAO.filtrarCintas(clienteId, techFilter, permitidos));
 
-        model.addAttribute("clientes", clienteDAO.findAll());
+        model.addAttribute("clientes", permisoService.filtrarClientes(clienteDAO.findAll(), permitidos));
         model.addAttribute("clienteSeleccionado", clienteId);
         model.addAttribute("tecnologiaSeleccionada", techFilter);
 
@@ -45,6 +50,7 @@ public class CintaController {
         model.addAttribute("cintaEnDrive", libraryService.consultarCintaEnDrive1());
         //consultamos si el robot está trabajando
         model.addAttribute("estadoRobot", libraryService.obtenerEstadoRobot());
+        model.addAttribute("puedeMover", permisoService.puedeMover(session));
         return "index";
     }
 
@@ -118,8 +124,13 @@ public class CintaController {
     // ==========================================
     @PostMapping("/api/mover-cinta-robot")
     @ResponseBody
-    public Map<String, String> moverCintaRobot(@RequestParam("barcode") String barcode) {
+    public Map<String, String> moverCintaRobot(@RequestParam("barcode") String barcode, HttpSession session) {
         Map<String, String> respuesta = new HashMap<>();
+        if (!permisoService.puedeMover(session)) {
+            respuesta.put("status", "error");
+            respuesta.put("mensaje", "No tenés permiso para mover cintas.");
+            return respuesta;
+        }
 
         String resultado = libraryService.moverCinta(barcode);
 
@@ -179,9 +190,11 @@ public class CintaController {
     }
 
     @GetMapping("/cintas")
-    public String cintas(org.springframework.ui.Model model) {
-        model.addAttribute("cintas", cintaDAO.listarTodasCompleto());
-        model.addAttribute("clientes", clienteDAO.findAll());
+    public String cintas(org.springframework.ui.Model model, HttpSession session) {
+        java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
+        model.addAttribute("cintas", cintaDAO.listarTodasCompleto(permitidos));
+        model.addAttribute("clientes", permisoService.filtrarClientes(clienteDAO.findAll(), permitidos));
+        model.addAttribute("puedeCrear", permisoService.puedeCrear(session));
         return "cintas";
     }
 
@@ -192,9 +205,17 @@ public class CintaController {
             @RequestParam("tecnologia") String tecnologia,
             @RequestParam("plantilla") String plantilla,
             @RequestParam("numeroInicial") int numeroInicial,
-            @RequestParam("cantidad") int cantidad) {
+            @RequestParam("cantidad") int cantidad,
+            @RequestParam(value = "esLlenable", defaultValue = "true") boolean esLlenable,
+            HttpSession session)
+    {
 
         java.util.Map<String, Object> resp = new java.util.HashMap<>();
+        if (!permisoService.puedeCrear(session)) {
+            resp.put("status", "error");
+            resp.put("mensaje", "No tenés permiso para crear cintas.");
+            return resp;
+        }
 
         int primer = plantilla.indexOf('-');
         int ultimo = plantilla.lastIndexOf('-');
@@ -227,10 +248,75 @@ public class CintaController {
             barcodes.add(prefijo + numStr + sufijo);
         }
 
-        java.util.Map<String, Object> res = cintaDAO.crearCintasLote(barcodes, clienteId, tecnologia);
+        java.util.Map<String, Object> res = cintaDAO.crearCintasLote(barcodes, clienteId, tecnologia, esLlenable);
         resp.put("status", "success");
         resp.putAll(res); // creadas, omitidas
         return resp;
+    }
+    // ==========================================================
+    // DASHBOARD: estadísticas para KPIs y gráficos
+    // ==========================================================
+    @GetMapping("/api/dashboard-stats")
+    @ResponseBody
+    public java.util.Map<String, Object> dashboardStats(HttpSession session) {
+        java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
+        java.util.List<Cinta> todas = cintaDAO.filtrarCintas(null, null, permitidos);
+
+        int total = todas.size();
+        int libreria = 0, armario = 0, retiradas = 0, virgenes = 0;
+        int dSaludable = 0, dAdvertencia = 0, dReemplazar = 0;
+        java.util.Map<String, Integer> porUbicacion = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Integer> porCliente = new java.util.HashMap<>();
+
+        for (Cinta c : todas) {
+            String ubi = normalizarUbicacion(c.getUbicacion());
+            porUbicacion.merge(ubi, 1, Integer::sum);
+            if ("Librería".equals(ubi)) libreria++;
+            else if ("Armario".equals(ubi)) armario++;
+            else if ("Retirado".equals(ubi)) retiradas++;
+
+            if ("PENDIENTE".equalsIgnoreCase(c.getVolumeId())) virgenes++;
+
+            int p = c.getPorcentajeDesgaste();
+            if (p >= 100) dReemplazar++;
+            else if (p >= 70) dAdvertencia++;
+            else dSaludable++;
+
+            String cli = (c.getNombreCliente() != null && !c.getNombreCliente().isEmpty())
+                    ? c.getNombreCliente() : "Sin cliente";
+            porCliente.merge(cli, 1, Integer::sum);
+        }
+
+        java.util.Map<String, Object> kpis = new java.util.HashMap<>();
+        kpis.put("total", total);
+        kpis.put("libreria", libreria);
+        kpis.put("armario", armario);
+        kpis.put("retiradas", retiradas);
+        kpis.put("virgenes", virgenes);
+        kpis.put("reemplazar", dReemplazar);
+
+        java.util.Map<String, Object> desgaste = new java.util.LinkedHashMap<>();
+        desgaste.put("saludable", dSaludable);
+        desgaste.put("advertencia", dAdvertencia);
+        desgaste.put("reemplazar", dReemplazar);
+
+        java.util.Map<String, Object> resp = new java.util.HashMap<>();
+        resp.put("kpis", kpis);
+        resp.put("desgaste", desgaste);
+        resp.put("ubicacion", porUbicacion);
+        resp.put("porCliente", porCliente);
+        return resp;
+    }
+
+    // Agrupa las variantes de ubicación (mayúsculas/tildes) en categorías limpias
+    private String normalizarUbicacion(String u) {
+        if (u == null || u.trim().isEmpty()) return "Sin ubicación";
+        String n = java.text.Normalizer.normalize(u.trim(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toUpperCase();
+        if (n.startsWith("LIBRER")) return "Librería";
+        if (n.startsWith("ARMARIO")) return "Armario";
+        if (n.startsWith("RETIRAD")) return "Retirado";
+        return u.trim();
     }
 
 }

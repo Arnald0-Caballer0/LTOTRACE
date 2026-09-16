@@ -19,7 +19,7 @@
                 <h4 class="fw-bold m-0"><i class="bi bi-hdd-stack"></i> Cintas</h4>
                 <span class="badge bg-primary" style="font-size:.9rem;">Total: <span id="totalCintas">0</span></span>
             </div>
-            <button class="btn btn-primary fw-bold" id="btnCrearCintas">
+            <button class="btn btn-primary fw-bold" id="btnCrearCintas" th:if="${puedeCrear}">
                 <i class="bi bi-plus-lg"></i> Crear cintas
             </button>
         </div>
@@ -125,7 +125,13 @@
                             <input type="number" id="crearInicio" class="form-control" min="0" value="1" required>
                         </div>
                     </div>
-
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="crearLlenable" checked>
+                        <label class="form-check-label fw-bold small" for="crearLlenable">
+                            Esta cinta se llena con datos
+                        </label>
+                        <div class="form-text small">Desmarcá si la cinta se usa para otro propósito y nunca se llena (no entra en el cálculo de llenado).</div>
+                    </div>
                     <div class="alert alert-light border mt-3 mb-0 small">
                         <div class="text-muted mb-1">
                             <i class="bi bi-info-circle"></i>
@@ -207,6 +213,7 @@
             params.append('plantilla', document.getElementById('crearPlantilla').value.trim());
             params.append('numeroInicial', document.getElementById('crearInicio').value);
             params.append('cantidad', document.getElementById('crearCantidad').value);
+            params.append('esLlenable', document.getElementById('crearLlenable').checked);
             fetch('/api/crear-cintas', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

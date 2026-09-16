@@ -141,6 +141,7 @@
 
     </style>
     <link rel="stylesheet" href="/css/lto.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -171,9 +172,15 @@
                                       th:classappend="${estadoRobot == 'Moving'} ? 'text-primary' : 'text-secondary'"
                                       th:text="${estadoRobot}"></span></span>
                             </div>
+
+                            <div class="drive-item">
+                                <button type="button" id="btnLiberarDrive" th:if="${puedeMover}" class="btn btn-sm btn-outline-primary fw-bold" style="display:none;" onclick="liberarDrive()">
+                                    <i class="bi bi-eject"></i> Liberar drive
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <form th:action="@{/}" method="get" class="d-flex gap-2">
+                    <form th:action="@{/}" method="get" class="d-flex gap-2 vista-inv">
                         <select name="clienteId" class="form-select form-select-sm" style="width: 180px;" onchange="this.form.submit()">
                             <option value="">Todos los Clientes</option>
                             <option th:each="cl : ${clientes}" th:value="${cl.id}" th:text="${cl.nombre}" th:selected="${cl.id == clienteSeleccionado}"></option>
@@ -188,7 +195,13 @@
                     </form>
                 </div>
 
-                <div th:if="${clienteSeleccionado != null}" class="mb-4">
+                <div class="mb-3 mt-1">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" id="btnVistaResumen" class="btn btn-primary"><i class="bi bi-bar-chart"></i> Resumen</button>
+                        <button type="button" id="btnVistaInventario" class="btn btn-outline-primary"><i class="bi bi-grid-3x3-gap"></i> Inventario</button>
+                    </div>
+                </div>
+                <div th:if="${clienteSeleccionado != null}" class="mb-4 vista-inv">
                     <p class="section-title text-uppercase">Cintas de la Semana (Prioridad)</p>
                     <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-2" id="gridSemanales">
                     </div>
@@ -197,12 +210,71 @@
             </div>
 
             <div class="scrollable-content">
-                <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
+
+                <!-- ===== VISTA RESUMEN (gráficos) ===== -->
+                <div class="vista-res">
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-md-4 col-xl">
+                            <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+                                <div class="text-muted small">Total de cintas</div>
+                                <div class="fs-3 fw-bold" id="kpiTotal">—</div>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl">
+                            <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+                                <div class="text-muted small">En librería</div>
+                                <div class="fs-3 fw-bold text-primary" id="kpiLibreria">—</div>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl">
+                            <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+                                <div class="text-muted small">En armario</div>
+                                <div class="fs-3 fw-bold" id="kpiArmario">—</div>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl">
+                            <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+                                <div class="text-muted small">Vírgenes</div>
+                                <div class="fs-3 fw-bold" id="kpiVirgenes">—</div>
+                            </div></div>
+                        </div>
+                        <div class="col-6 col-md-4 col-xl">
+                            <div class="card border-0 shadow-sm h-100"><div class="card-body py-3">
+                                <div class="text-muted small">A reemplazar</div>
+                                <div class="fs-3 fw-bold text-danger" id="kpiReemplazar">—</div>
+                            </div></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 pb-5">
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm h-100"><div class="card-body">
+                                <h6 class="fw-bold mb-3">Estado de desgaste</h6>
+                                <div style="height:260px;"><canvas id="chartDesgaste"></canvas></div>
+                            </div></div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm h-100"><div class="card-body">
+                                <h6 class="fw-bold mb-3">Distribución por ubicación</h6>
+                                <div style="height:260px;"><canvas id="chartUbicacion"></canvas></div>
+                            </div></div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card border-0 shadow-sm h-100"><div class="card-body">
+                                <h6 class="fw-bold mb-3">Cintas por cliente</h6>
+                                <div style="height:260px;"><canvas id="chartCliente"></canvas></div>
+                            </div></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ===== FIN VISTA RESUMEN ===== -->
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap mb-2 vista-inv">
                     <p class="section-title text-uppercase mb-0">Inventario Maestro (Archivo)</p>
                     <input type="text" id="buscadorCintas" class="form-control form-control-sm"
                            style="max-width:280px" placeholder="Buscar barcode, cliente o Volume ID...">
                 </div>
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4 pb-5" id="gridInventario"> <div class="col" th:each="cinta : ${cintas}">                    <div class="card h-100 shadow-sm tape-card border-0" th:classappend="'border-' + ${cinta.tecnologia}">
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4 pb-5 vista-inv" id="gridInventario"> <div class="col" th:each="cinta : ${cintas}">                    <div class="card h-100 shadow-sm tape-card border-0" th:classappend="'border-' + ${cinta.tecnologia}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="badge tech-badge px-2" th:text="${cinta.tecnologia}"></span>
@@ -305,6 +377,7 @@
                 const cintaElement = document.getElementById('cintaBadge');
                 if (cintaElement) {
                     cintaElement.innerText = data.cinta;
+                    actualizarBotonLiberar();
                 }
 
                 // 2. Robot (ahora solo cambia el color de la letra)
@@ -324,6 +397,43 @@
             .catch(error => console.error('Error:', error));
     }
     // Ejecutar cada 5 segundos (5000 milisegundos)
+    // ==========================================
+    // LIBERAR DRIVE: descarga la cinta actual al slot
+    // ==========================================
+    function esDriveVacio(txt) {
+        const t = (txt || '').trim().toUpperCase();
+        return t === '' || t === '---' || t === 'VACÍO' || t === 'VACIO' || t === 'EMPTY';
+    }
+
+    function actualizarBotonLiberar() {
+        const cinta = document.getElementById('cintaBadge');
+        const btn = document.getElementById('btnLiberarDrive');
+        if (!cinta || !btn) return;
+        btn.style.display = esDriveVacio(cinta.innerText) ? 'none' : 'inline-block';
+    }
+
+    function liberarDrive() {
+        const cinta = document.getElementById('cintaBadge');
+        const barcode = cinta ? cinta.innerText.trim() : '';
+        if (esDriveVacio(barcode)) { alert('No hay ninguna cinta en el drive.'); return; }
+        if (confirm('Se liberará el drive: la cinta [ ' + barcode + ' ] se moverá a un slot vacío de la librería.\n\n¿Continuar?')) {
+            const btn = document.getElementById('btnLiberarDrive');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Liberando...'; }
+            fetch('/api/mover-cinta-robot?barcode=' + encodeURIComponent(barcode), { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') { alert('Drive liberado: ' + data.mensaje); }
+                    else { alert('Error: ' + data.mensaje); }
+                    actualizarEstadoLibreria();
+                })
+                .catch(() => alert('Error de conexión al liberar el drive.'))
+                .finally(() => {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-eject"></i> Liberar drive'; }
+                    setTimeout(actualizarBotonLiberar, 500);
+                });
+        }
+    }
+
     setInterval(actualizarEstadoLibreria, 5000);
 
     // Ejecutar una vez al cargar para asegurar que los IDs estén vinculados
@@ -538,5 +648,68 @@
         });
     });
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const btnRes = document.getElementById('btnVistaResumen');
+    const btnInv = document.getElementById('btnVistaInventario');
+    const elemRes = document.querySelectorAll('.vista-res');
+    const elemInv = document.querySelectorAll('.vista-inv');
+    let chartsCargados = false;
+
+    function mostrar(vista) {
+        const esRes = (vista === 'resumen');
+        elemRes.forEach(e => e.style.display = esRes ? '' : 'none');
+        elemInv.forEach(e => e.style.display = esRes ? 'none' : '');
+        btnRes.className = 'btn ' + (esRes ? 'btn-primary' : 'btn-outline-primary');
+        btnInv.className = 'btn ' + (esRes ? 'btn-outline-primary' : 'btn-primary');
+        if (esRes && !chartsCargados) { cargarGraficos(); chartsCargados = true; }
+    }
+    if (btnRes) btnRes.addEventListener('click', () => mostrar('resumen'));
+    if (btnInv) btnInv.addEventListener('click', () => mostrar('inventario'));
+
+    // Si hay un filtro activo, arrancamos en Inventario; si no, en Resumen
+    const params = new URLSearchParams(location.search);
+    mostrar((params.has('clienteId') || params.has('tecnologia')) ? 'inventario' : 'resumen');
+
+    function cargarGraficos() {
+        fetch('/api/dashboard-stats').then(r => r.json()).then(d => {
+            document.getElementById('kpiTotal').textContent = d.kpis.total;
+            document.getElementById('kpiLibreria').textContent = d.kpis.libreria;
+            document.getElementById('kpiArmario').textContent = d.kpis.armario;
+            document.getElementById('kpiVirgenes').textContent = d.kpis.virgenes;
+            document.getElementById('kpiReemplazar').textContent = d.kpis.reemplazar;
+
+            const azul = '#70a1bd', oscuro = '#343734', gris = '#b8bcb2';
+            const verde = '#2e9e5b', amarillo = '#e0a800', rojo = '#e74c3c';
+            const opt = { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
+
+            new Chart(document.getElementById('chartDesgaste'), {
+                type: 'doughnut',
+                data: { labels: ['Saludable', 'Advertencia', 'Reemplazar'],
+                        datasets: [{ data: [d.desgaste.saludable, d.desgaste.advertencia, d.desgaste.reemplazar],
+                                     backgroundColor: [verde, amarillo, rojo] }] },
+                options: opt
+            });
+
+            new Chart(document.getElementById('chartUbicacion'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(d.ubicacion),
+                        datasets: [{ data: Object.values(d.ubicacion),
+                                     backgroundColor: [azul, oscuro, gris, '#9bb8c9', '#c9d6cf'] }] },
+                options: opt
+            });
+
+            new Chart(document.getElementById('chartCliente'), {
+                type: 'bar',
+                data: { labels: Object.keys(d.porCliente),
+                        datasets: [{ label: 'Cintas', data: Object.values(d.porCliente), backgroundColor: azul }] },
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+        }).catch(e => console.error('Error al cargar estadísticas:', e));
+    }
+});
+</script>
+
 </body>
 </html>

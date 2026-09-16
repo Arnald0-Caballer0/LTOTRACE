@@ -190,10 +190,15 @@ public class CintaDAO {
     // 3. Listados para la Interfaz Web - SOLO LECTURA
     // ==========================================================
     public List<Cinta> filtrarCintas(Integer clienteId, String tecnologia) {
+        return filtrarCintas(clienteId, tecnologia, null);
+    }
+
+    // Versión con alcance de clientes: si 'permitidos' no es null, solo trae esos clientes.
+    public List<Cinta> filtrarCintas(Integer clienteId, String tecnologia, java.util.Set<Long> permitidos) {
         List<Cinta> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
                 "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, " +
-                        "c.contador_usos, cl.promedio_gb_backup, cl.dias_entre_backups, " +
+                        "c.contador_usos, c.es_llenable, cl.promedio_gb_backup, cl.dias_entre_backups, " +
                         "COALESCE(t.capacidad_gb, 0) AS capacidad_gb " +
                         "FROM cintas c " +
                         "LEFT JOIN clientes cl ON c.cliente_id = cl.id " +
@@ -204,12 +209,26 @@ public class CintaDAO {
         if (clienteId != null) sql.append(" AND c.cliente_id = ?");
         if (tecnologia != null) sql.append(" AND c.tecnologia = ?");
 
+        boolean scope = permitidos != null;
+        if (scope) {
+            if (permitidos.isEmpty()) {
+                sql.append(" AND 1=0");
+            } else {
+                sql.append(" AND c.cliente_id IN (");
+                for (int k = 0; k < permitidos.size(); k++) sql.append(k == 0 ? "?" : ",?");
+                sql.append(")");
+            }
+        }
+
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
 
             int i = 1;
             if (clienteId != null) pstmt.setInt(i++, clienteId);
             if (tecnologia != null) pstmt.setString(i++, tecnologia);
+            if (scope && !permitidos.isEmpty()) {
+                for (Long cid : permitidos) pstmt.setLong(i++, cid);
+            }
 
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
@@ -221,7 +240,8 @@ public class CintaDAO {
                 cinta.setContadorUsos(rs.getInt("contador_usos"));
                 cinta.setPromedioGbBackup(rs.getInt("promedio_gb_backup"));
                 cinta.setDiasEntreBackups(rs.getInt("dias_entre_backups"));
-                cinta.setCapacidadGb(rs.getInt("capacidad_gb")); // capacidad desde tecnologias_lto
+                cinta.setCapacidadGb(rs.getInt("capacidad_gb"));
+                cinta.setEsLlenable(rs.getBoolean("es_llenable"));
                 lista.add(cinta);
             }
         } catch (SQLException e) {
@@ -229,6 +249,7 @@ public class CintaDAO {
         }
         return lista;
     }
+
 
 
 
@@ -579,18 +600,40 @@ public class CintaDAO {
 
     // Trae TODAS las cintas con TODOS sus campos (para el módulo Cintas > Ver cintas)
     public List<java.util.Map<String, Object>> listarTodasCompleto() {
+        return listarTodasCompleto(null);
+    }
+
+    // Versión con alcance de clientes
+    public List<java.util.Map<String, Object>> listarTodasCompleto(java.util.Set<Long> permitidos) {
         List<java.util.Map<String, Object>> lista = new ArrayList<>();
-        String sql = "SELECT c.barcode, c.volume_id, c.tecnologia, c.ubicacion, c.estado, " +
-                "c.contador_usos, c.fecha_primer_uso, c.es_semanal, c.dia_semana, " +
-                "c.ultima_modificacion, cl.nombre AS cliente " +
-                "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id ORDER BY c.barcode";
+        StringBuilder sql = new StringBuilder(
+                "SELECT c.barcode, c.volume_id, c.tecnologia, c.ubicacion, c.estado, " +
+                        "c.contador_usos, c.fecha_primer_uso, c.es_semanal, c.dia_semana, " +
+                        "c.ultima_modificacion, cl.nombre AS cliente " +
+                        "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE 1=1");
+
+        boolean scope = permitidos != null;
+        if (scope) {
+            if (permitidos.isEmpty()) {
+                sql.append(" AND 1=0");
+            } else {
+                sql.append(" AND c.cliente_id IN (");
+                for (int k = 0; k < permitidos.size(); k++) sql.append(k == 0 ? "?" : ",?");
+                sql.append(")");
+            }
+        }
+        sql.append(" ORDER BY c.barcode");
 
         java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         java.time.format.DateTimeFormatter fmtFecha = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         try (Connection conn = DatabaseConnection.getConnection();
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+            if (scope && !permitidos.isEmpty()) {
+                int i = 1;
+                for (Long cid : permitidos) pstmt.setLong(i++, cid);
+            }
+            ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 java.util.Map<String, Object> m = new java.util.HashMap<>();
                 m.put("barcode", rs.getString("barcode"));
@@ -602,12 +645,10 @@ public class CintaDAO {
                 m.put("usos", rs.getInt("contador_usos"));
                 m.put("esSemanal", rs.getBoolean("es_semanal"));
                 m.put("diaSemana", rs.getString("dia_semana"));
-
                 java.sql.Timestamp fpu = rs.getTimestamp("fecha_primer_uso");
                 m.put("fechaPrimerUso", fpu != null ? fpu.toLocalDateTime().format(fmtFecha) : "");
                 java.sql.Timestamp um = rs.getTimestamp("ultima_modificacion");
                 m.put("ultimaModificacion", um != null ? um.toLocalDateTime().format(fmt) : "");
-
                 lista.add(m);
             }
         } catch (SQLException e) {
@@ -615,8 +656,9 @@ public class CintaDAO {
         }
         return lista;
     }
+
     // Crea un lote de cintas en una sola transacción. Omite las que ya existan.
-    public java.util.Map<String, Object> crearCintasLote(java.util.List<String> barcodes, int clienteId, String tecnologia) {
+    public java.util.Map<String, Object> crearCintasLote(java.util.List<String> barcodes, int clienteId, String tecnologia, boolean esLlenable) {
         java.util.List<String> creadas = new ArrayList<>();
         java.util.List<String> omitidas = new ArrayList<>();
 
@@ -626,8 +668,8 @@ public class CintaDAO {
             conn.setAutoCommit(false);
 
             String check = "SELECT 1 FROM cintas WHERE barcode = ?";
-            String insert = "INSERT INTO cintas (barcode, volume_id, cliente_id, ubicacion, tecnologia) " +
-                    "VALUES (?, 'PENDIENTE', ?, 'ARMARIO', ?)";
+            String insert = "INSERT INTO cintas (barcode, volume_id, cliente_id, ubicacion, tecnologia, es_llenable) " +
+                    "VALUES (?, 'PENDIENTE', ?, 'ARMARIO', ?, ?)";
 
             for (String bc : barcodes) {
                 boolean existe;
@@ -641,6 +683,7 @@ public class CintaDAO {
                     ps.setString(1, bc);
                     ps.setInt(2, clienteId);
                     ps.setString(3, tecnologia);
+                    ps.setBoolean(4, esLlenable);
                     ps.executeUpdate();
                 }
                 registrarMovimiento(conn, bc, "ALTA", "Cinta creada por lote (" + tecnologia + ")", null);
@@ -660,6 +703,7 @@ public class CintaDAO {
         res.put("omitidas", omitidas);
         return res;
     }
+
     // Cuenta cuántas cintas usan una tecnología (para el borrado seguro en Configuración)
     public int contarPorTecnologia(String tecnologia) {
         String sql = "SELECT COUNT(*) FROM cintas WHERE UPPER(TRIM(tecnologia)) = UPPER(?)";

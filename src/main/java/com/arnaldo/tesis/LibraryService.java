@@ -180,8 +180,7 @@ public class LibraryService {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             // 2. OBTENER INVENTARIO (Usando tu RestTemplate)
-            String urlInventario = "https://" + ip + ":3031/rest/partition/inventory?partitionNum=\" + cfg.get(\"ts4300.particion\")";
-            HttpEntity<String> entityGet = new HttpEntity<>(headers);
+            String urlInventario = "https://" + ip + ":3031/rest/partition/inventory?partitionNum=" + cfg.get("ts4300.particion");            HttpEntity<String> entityGet = new HttpEntity<>(headers);
             ResponseEntity<String> responseInv = restTemplate.exchange(urlInventario, HttpMethod.GET, entityGet, String.class);
             String inventarioJson = responseInv.getBody();
 

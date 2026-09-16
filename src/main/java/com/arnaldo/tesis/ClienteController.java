@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,15 +20,15 @@ public class ClienteController {
     // Inyectamos la conexión a la BD correctamente sin usar "new"
     @Autowired
     private ClienteDAO clienteDAO;
+    @Autowired
+    private PermisoService permisoService;
 
     // Este es el método que carga tu pantalla del 30/70
     @GetMapping("/clientes")
-    public String moduloClientes(Model model) {
-
-        // ¡Magia! Traemos todos los clientes reales de tu base de datos
-        // y los mandamos a la vista HTML con el nombre "listaClientes"
-        model.addAttribute("listaClientes", clienteDAO.findAll());
-
+    public String moduloClientes(Model model, HttpSession session) {
+        java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
+        model.addAttribute("listaClientes", permisoService.filtrarClientes(clienteDAO.findAll(), permitidos));
+        model.addAttribute("puedeRetirar", permisoService.puedeRetirar(session));
         return "clientes";
     }
     // ... tu código anterior de @GetMapping("/clientes") ...
@@ -39,9 +40,10 @@ public class ClienteController {
     // Esta es la "puerta" (API) que JavaScript va a llamar para pedir las cintas
     @GetMapping("/api/cintas-cliente")
     @ResponseBody // Esto hace que Spring devuelva datos (JSON) en vez de una página HTML
-    public List<Cinta> obtenerCintasDelCliente(@org.springframework.web.bind.annotation.RequestParam("id") int clienteId) {
-
-        // ¡Usamos tu método existente que ya funciona perfecto!
+    public List<Cinta> obtenerCintasDelCliente(@org.springframework.web.bind.annotation.RequestParam("id") int clienteId, HttpSession session) {
+        if (!permisoService.puedeVerCliente(session, (long) clienteId)) {
+            return new java.util.ArrayList<>();
+        }
         return cintaDAO.filtrarPorCliente(clienteId);
     }
     // Esta API recibe la lista de barcodes desde JavaScript y llama a tu DAO
@@ -92,7 +94,12 @@ public class ClienteController {
     @PostMapping("/api/comprobante-retiro")
     public ResponseEntity<byte[]> comprobanteRetiro(
             @org.springframework.web.bind.annotation.RequestParam("clienteId") Long clienteId,
-            @RequestBody List<String> barcodes) {
+            @RequestBody List<String> barcodes,
+            HttpSession session) {
+
+        if (!permisoService.puedeRetirar(session)) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
 
         // 1. Datos para el acta (antes de retirar)
         Cliente cliente = clienteDAO.findById(clienteId).orElse(null);

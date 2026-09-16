@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>LTOTRACE · Permisos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/lto.css">
+    <style>
+        body, html { height:100%; overflow:auto; font-family:'Inter','Segoe UI',sans-serif; }
+        .modulo-wrapper { padding:1.25rem 1.5rem; max-width:1000px; }
+        .cfg-card { background:#fff; border:1px solid var(--lto-borde); border-radius:12px; box-shadow:0 2px 12px rgba(52,55,52,.05); }
+        .cfg-card-header { padding:.85rem 1.25rem; border-bottom:1px solid var(--lto-borde); font-weight:700; display:flex; align-items:center; gap:8px; }
+        .lista-clientes { max-height:260px; overflow:auto; border:1px solid var(--lto-borde); border-radius:8px; padding:.5rem 1rem; }
+    </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/barra :: rail('usuarios')}"></div>
+
+<div class="app-content">
+    <div class="modulo-wrapper">
+
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <a href="/usuarios" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+            <h4 class="fw-bold m-0"><i class="bi bi-shield-lock"></i> Permisos de <span th:text="${usuario.username}"></span></h4>
+        </div>
+        <p class="text-muted small mb-4">El administrador siempre tiene acceso total; estos permisos aplican a operadores.</p>
+
+        <div th:if="${param.ok != null}" class="alert alert-success py-2">Permisos guardados correctamente.</div>
+
+        <form th:action="@{'/usuarios/' + ${usuario.id} + '/permisos'}" method="post">
+
+            <div class="row g-4">
+                <!-- Rol y capacidades -->
+                <div class="col-lg-5">
+                    <div class="cfg-card mb-4">
+                        <div class="cfg-card-header"><i class="bi bi-person-badge text-primary"></i> Rol</div>
+                        <div class="p-3">
+                            <select name="rol" class="form-select">
+                                <option value="OPERADOR" th:selected="${usuario.rolCodigo == 'OPERADOR'}">Operador</option>
+                                <option value="ADMIN" th:selected="${usuario.rolCodigo == 'ADMIN'}">Administrador</option>
+                            </select>
+                            <div class="form-text small">Un administrador ignora las restricciones de abajo.</div>
+                        </div>
+                    </div>
+
+                    <div class="cfg-card">
+                        <div class="cfg-card-header"><i class="bi bi-sliders text-primary"></i> Capacidades</div>
+                        <div class="p-3">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="puedeMover" id="pMover" th:checked="${usuario.puedeMoverCintas}">
+                                <label class="form-check-label" for="pMover">Mover cintas (robot)</label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="puedeCrear" id="pCrear" th:checked="${usuario.puedeCrearCintas}">
+                                <label class="form-check-label" for="pCrear">Crear cintas</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="puedeRetirar" id="pRetirar" th:checked="${usuario.puedeRetirarCintas}">
+                                <label class="form-check-label" for="pRetirar">Retirar cintas</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alcance de clientes -->
+                <div class="col-lg-7">
+                    <div class="cfg-card h-100">
+                        <div class="cfg-card-header"><i class="bi bi-people text-primary"></i> Alcance de clientes</div>
+                        <div class="p-3">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="veTodos" id="veTodos" th:checked="${usuario.veTodosClientes}">
+                                <label class="form-check-label fw-bold" for="veTodos">Ve todos los clientes</label>
+                            </div>
+
+                            <div id="zonaClientes">
+                                <p class="text-muted small mb-2">O seleccioná los clientes que puede ver:</p>
+                                <div class="lista-clientes">
+                                    <div class="form-check" th:each="c : ${clientes}">
+                                        <input class="form-check-input chk-cliente" type="checkbox" name="clientes"
+                                               th:value="${c.id}" th:id="'cli' + ${c.id}"
+                                               th:checked="${asignados.contains(c.id)}">
+                                        <label class="form-check-label" th:for="'cli' + ${c.id}" th:text="${c.nombre}"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end my-4">
+                <button type="submit" class="btn btn-primary fw-bold px-4"><i class="bi bi-check-lg"></i> Guardar permisos</button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Si "ve todos" está marcado, deshabilita la lista de clientes
+    document.addEventListener('DOMContentLoaded', function () {
+        const veTodos = document.getElementById('veTodos');
+        const zona = document.getElementById('zonaClientes');
+        function actualizar() {
+            zona.style.opacity = veTodos.checked ? '.4' : '1';
+            document.querySelectorAll('.chk-cliente').forEach(c => c.disabled = veTodos.checked);
+        }
+        veTodos.addEventListener('change', actualizar);
+        actualizar();
+    });
+</script>
+</body>
+</html>

@@ -16,7 +16,6 @@ import java.time.format.DateTimeFormatter;
 @Table(name = "cintas")
 public class Cinta {
 
-    // Vida útil estimada en montajes (regla práctica del fabricante)
     @Transient
     private static final int VIDA_UTIL_MONTAJES = 250;
 
@@ -48,17 +47,16 @@ public class Cinta {
     @Transient
     private int contadorUsos;
     @Transient
-    private Integer promedioGbBackup;   // viene del cliente
+    private Integer promedioGbBackup;   // del cliente
     @Transient
-    private Integer diasEntreBackups;   // viene del cliente
+    private Integer diasEntreBackups;   // del cliente
     @Transient
-    private int capacidadGb;            // viene de la tabla tecnologias_lto
+    private int capacidadGb;            // de tecnologias_lto
+    @Transient
+    private boolean esLlenable = true;  // si la cinta se llena con datos
 
-    // 1. Constructor vacío
-    public Cinta() {
-    }
+    public Cinta() {}
 
-    // 2. Constructor original INTACTO
     public Cinta(String barcode, String volumeId, String ubicacion, String estado, String nombreCliente, String tecnologia) {
         this.barcode = barcode;
         this.volumeId = volumeId;
@@ -71,34 +69,29 @@ public class Cinta {
     // ==========================================================
     // CÁLCULOS DE DESGASTE Y LLENADO
     // ==========================================================
+    public int getCapacidadGb() { return capacidadGb; }
 
-    /** Capacidad nativa en GB (ahora viene de la tabla tecnologias_lto). */
-    public int getCapacidadGb() {
-        return capacidadGb;
-    }
-
-    // ---- Desgaste (montajes vs vida útil) ----
+    // ---- Desgaste ----
     public int getPorcentajeDesgaste() {
         int p = (int) Math.round(contadorUsos * 100.0 / VIDA_UTIL_MONTAJES);
         return Math.min(p, 100);
     }
-
     public String getColorDesgaste() {
         int p = getPorcentajeDesgaste();
         if (p >= 100) return "bg-danger";
         if (p >= 70) return "bg-warning";
         return "bg-success";
     }
-
     public String getTextoDesgaste() {
         String base = "Usos: " + contadorUsos + " / " + VIDA_UTIL_MONTAJES;
         if (getPorcentajeDesgaste() >= 100) base += " · Reemplazar";
         return base;
     }
 
-    // ---- Llenado (datos escritos vs capacidad) ----
+    // ---- Llenado ----
+    /** Solo se calcula si la cinta ES llenable y hay datos suficientes. */
     public boolean isLlenadoCalculable() {
-        return promedioGbBackup != null && promedioGbBackup > 0 && getCapacidadGb() > 0;
+        return esLlenable && promedioGbBackup != null && promedioGbBackup > 0 && getCapacidadGb() > 0;
     }
 
     public int getGbUsados() {
@@ -113,6 +106,7 @@ public class Cinta {
     }
 
     public String getColorLlenado() {
+        if (!esLlenable) return "bg-secondary";
         int p = getPorcentajeLlenado();
         if (p >= 100) return "bg-danger";
         if (p >= 80) return "bg-warning";
@@ -130,6 +124,7 @@ public class Cinta {
     }
 
     public String getTextoLlenado() {
+        if (!esLlenable) return "No se llena (otro propósito)";
         if (!isLlenadoCalculable()) return "Configurá GB/backup del cliente";
         if (getPorcentajeLlenado() >= 100) return "Cinta llena";
         String f = getFechaEstimadaLlenado();
@@ -176,4 +171,7 @@ public class Cinta {
     public void setDiasEntreBackups(Integer diasEntreBackups) { this.diasEntreBackups = diasEntreBackups; }
 
     public void setCapacidadGb(int capacidadGb) { this.capacidadGb = capacidadGb; }
+
+    public boolean isEsLlenable() { return esLlenable; }
+    public void setEsLlenable(boolean esLlenable) { this.esLlenable = esLlenable; }
 }

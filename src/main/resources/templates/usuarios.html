@@ -145,6 +145,9 @@
                                         <i class="bi" th:classappend="${u.activo} ? 'bi-toggle-on' : 'bi-toggle-off'"></i>
                                     </button>
                                 </form>
+                                <a th:href="@{'/usuarios/' + ${u.id} + '/permisos'}" class="btn-accion" title="Permisos">
+                                    <i class="bi bi-shield-lock"></i>
+                                </a>
                                 <button type="button" class="btn-accion btn-reset"
                                         th:data-id="${u.id}" th:data-user="${u.username}" title="Restablecer contraseña">
                                     <i class="bi bi-key"></i>

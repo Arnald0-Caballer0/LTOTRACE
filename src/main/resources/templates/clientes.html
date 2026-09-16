@@ -18,7 +18,7 @@
     .input-cliente { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 0.9rem; }
     .input-cliente:focus { background: rgba(255,255,255,0.1); color: white; border-color: #0d6efd; box-shadow: none; }
     .input-cliente::placeholder { color: rgba(255,255,255,0.4); }
-    .btn-retroceder { position: absolute; top: 1rem; right: 1rem; }
+    .btn-retroceder { /* va en línea con los botones del encabezado */ }
 
     /* Estilos extra para las tarjetas del dashboard */
     .dash-card { border-radius: 10px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: 0.3s; }
@@ -52,14 +52,14 @@
                   th:data-encargado="${cliente.encargado}" th:data-telefono="${cliente.telefono}" th:data-correo="${cliente.email}"
                   th:data-promedio="${cliente.promedioGbBackup}" th:data-dias="${cliente.diasEntreBackups}" class="text-dark">          </option>
         </select>
-          <button id="btnNuevoCliente" class="btn btn-success btn-sm" title="Nuevo cliente"><i class="bi bi-plus-lg"></i></button>
+          <button id="btnNuevoCliente" class="btn btn-primary btn-sm" title="Nuevo cliente"><i class="bi bi-plus-lg"></i></button>
           <button class="btn btn-outline-secondary btn-sm btn-retroceder" title="Reiniciar vista"><i class="bi bi-arrow-counterclockwise"></i></button>
         </div>
       </div>
       <div class="d-flex flex-wrap gap-4 mt-2">
         <span class="small text-muted"><i class="bi bi-person"></i> Encargado: <strong id="datoEncargado" class="text-dark">-</strong></span>
         <span class="small text-muted"><i class="bi bi-telephone"></i> Tel&eacute;fono: <strong id="datoTelefono" class="text-dark">-</strong></span>
-        <span class="small text-muted"><i class="bi bi-envelope"></i> Correo: <strong id="datoCorreo" class="text-dark">-</strong></span>
+        <span class="small text-muted"><i class="bi bi-envelope"></i> Email: <strong id="datoCorreo" class="text-dark">-</strong></span>
       </div>
     </header>
 
@@ -158,133 +158,111 @@
 </template>
 
 <template id="tpl-retiro">
-  <div class="row h-100">
-    <div class="col-md-7 d-flex flex-column h-100">
-      <div class="mb-3">
+  <div class="row g-3 h-100">
+
+    <!-- Tabla de cintas a retirar -->
+    <div class="col-lg-8 d-flex flex-column h-100">
+      <div class="mb-2">
         <input type="text" id="buscadorRetiro" class="form-control" placeholder="Buscar cinta para retirar...">
       </div>
       <div class="card border-0 shadow-sm flex-grow-1 overflow-auto">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0 align-middle">
           <thead class="table-light sticky-top">
           <tr>
             <th width="50">Sel.</th>
             <th>Barcode</th>
-            <th>Nombre</th>
-            <th>Tech</th>
+            <th>Volume ID</th>
+            <th>Tecnología</th>
           </tr>
           </thead>
-          <tbody>
-          <tr>
-            <td><input class="form-check-input check-retiro" type="checkbox" data-barcode="CLN123L7" data-vol="TAP001"></td>
-            <td>CLN123L7</td><td>TAP001</td><td>LTO-7</td>
-          </tr>
-          <tr>
-            <td><input class="form-check-input check-retiro" type="checkbox" data-barcode="ABC456L8" data-vol="TAP002"></td>
-            <td>ABC456L8</td><td>TAP002</td><td>LTO-8</td>
-          </tr>
-          <tr>
-            <td><input class="form-check-input check-retiro" type="checkbox" data-barcode="XYZ789L8" data-vol="TAP003"></td>
-            <td>XYZ789L8</td><td>TAP003</td><td>LTO-8</td>
-          </tr>
-          </tbody>
+          <tbody></tbody>
         </table>
       </div>
     </div>
 
-    <div class="col-md-5 d-flex flex-column h-100">
-      <div id="zonaActaImprimible" class="card border-0 shadow-sm flex-grow-1 mb-3 bg-white" style="padding: 20px; min-height: 500px;">
-        <div class="card-body d-flex flex-column">
-
-          <h5 class="fw-bold mb-4 text-center text-uppercase border-bottom pb-2">Acta de Retiro de Cintas</h5>
-
-          <div class="row mb-4">
-            <div class="col-12">
-              <p class="mb-1 small"><strong>Empresa:</strong> <span id="actaClienteNombre" class="text-primary fw-bold">Seleccione un cliente</span></p>
-              <p class="mb-1 small"><strong>Encargado:</strong> <span id="actaClienteEncargado">-</span></p>
-              <p class="mb-1 small"><strong>Fecha:</strong> <span id="fechaActual"></span></p>
-            </div>
+    <!-- Panel de resumen y acción -->
+    <div class="col-lg-4 d-flex flex-column h-100">
+      <div class="card border-0 shadow-sm flex-grow-1 d-flex flex-column">
+        <div class="card-header bg-white py-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <h6 class="fw-bold mb-0"><i class="bi bi-box-arrow-right text-primary"></i> Retiro de cintas</h6>
+            <span class="badge bg-primary" style="font-size:.82rem;">Seleccionadas: <span id="contadorCintas">0</span></span>
           </div>
-
-          <div class="flex-grow-1 mb-5">
-            <h6 class="small fw-bold text-muted mb-3 bg-light p-2 rounded">CINTAS A RETIRAR (<span id="contadorCintas">0</span>)</h6>
-            <ul id="listaCintasActa" class="list-unstyled small text-dark fw-semibold ps-2">
-              <li><em class="text-muted fw-normal">Seleccione cintas en la tabla...</em></li>
-            </ul>
-          </div>
-
-          <div class="mt-auto pt-5 text-center">
-            <div class="border-top border-dark border-2 mx-auto mb-2" style="width: 250px;"></div>
-            <p class="mb-0 fw-bold small text-uppercase">Firma de Recepción</p>
-            <p class="small text-muted" id="firmaNombreEncargado">-</p>
-          </div>
-
+          <div class="small text-muted mt-1">Cliente: <span id="actaClienteNombre" class="fw-bold text-dark">Seleccione un cliente</span></div>
+        </div>
+        <div class="card-body flex-grow-1 overflow-auto">
+          <ul id="listaCintasActa" class="list-unstyled small mb-0">
+            <li><em class="text-muted">Seleccione cintas en la tabla...</em></li>
+          </ul>
+        </div>
+        <div class="card-footer bg-white p-3">
+          <p class="small text-muted mb-2"><i class="bi bi-info-circle"></i> Al procesar, se genera y descarga el acta en PDF.</p>
+          <button id="btnProcesarRetiro" th:if="${puedeRetirar}" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">
+            <i class="bi bi-box-arrow-right"></i> Procesar retiro
+          </button>
         </div>
       </div>
 
-      <div class="d-flex justify-content-end mb-3">
-        <button id="btnExportarPdf" class="btn btn-outline-danger btn-sm"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
-      </div>
-
-      <button id="btnProcesarRetiro" class="btn btn-warning w-100 fw-bold py-3 shadow-sm">
-        <i class="bi bi-box-arrow-right"></i> PROCESAR RETIRO
-      </button>
+      <!-- Elementos ocultos: mantienen compatibilidad con el JS existente -->
+      <span id="actaClienteEncargado" class="d-none"></span>
+      <span id="fechaActual" class="d-none"></span>
+      <span id="firmaNombreEncargado" class="d-none"></span>
     </div>
+
   </div>
 </template>
 
 <template id="tpl-datos">
   <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white py-3">
+    <div class="card-header bg-white py-3 d-flex align-items-center gap-2">
+      <i class="bi bi-person-vcard text-primary fs-5"></i>
       <h5 class="fw-bold mb-0">Ficha del Cliente</h5>
     </div>
     <div class="card-body p-4">
       <form id="formClienteBD">
         <input type="hidden" id="formDatosId">
 
-        <div class="row">
-          <div class="col-md-6 mb-3">
+        <h6 class="fw-bold text-muted small mb-3">Datos generales</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
             <label class="form-label fw-bold small">Razón Social (Nombre)</label>
             <input type="text" id="formDatosNombre" class="form-control" required>
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col-md-6">
             <label class="form-label fw-bold small">Encargado</label>
             <input type="text" id="formDatosEncargado" class="form-control">
           </div>
-        </div>
-
-        <div class="row">
-          <div class="col-md-6 mb-3">
+          <div class="col-md-4">
             <label class="form-label fw-bold small">Teléfono</label>
             <input type="text" id="formDatosTelefono" class="form-control">
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col-md-4">
+            <label class="form-label fw-bold small">Email</label>
+            <input type="email" id="formDatosEmail" class="form-control">
+          </div>
+          <div class="col-md-4">
             <label class="form-label fw-bold small">Fecha de Registro</label>
             <input type="date" id="formDatosFecha" class="form-control">
           </div>
         </div>
 
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label fw-bold small">Email (Principal)</label>
-            <input type="email" id="formDatosEmail" class="form-control">
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label fw-bold small">Correo (Alternativo)</label>
-            <input type="email" id="formDatosCorreo" class="form-control">
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-md-6 mb-3">
+        <hr class="my-4">
+
+        <h6 class="fw-bold text-muted small mb-1">Parámetros de backup</h6>
+        <p class="text-muted small mb-3">Se usan para estimar el llenado de las cintas de este cliente.</p>
+        <div class="row g-3">
+          <div class="col-md-6">
             <label class="form-label fw-bold small">GB promedio por backup</label>
             <input type="number" min="0" id="formDatosPromedio" class="form-control" placeholder="Ej: 800">
           </div>
-          <div class="col-md-6 mb-3">
+          <div class="col-md-6">
             <label class="form-label fw-bold small">Días entre backups</label>
             <input type="number" min="0" id="formDatosDias" class="form-control" placeholder="Ej: 5">
           </div>
         </div>
-        <button id="btnGuardarBd" class="btn btn-success mt-3 w-100 fw-bold py-2 shadow-sm">
-          <i class="bi bi-save"></i> GUARDAR DATOS
+
+        <button id="btnGuardarBd" class="btn btn-primary mt-4 w-100 fw-bold py-2 shadow-sm">
+          <i class="bi bi-save"></i> Guardar datos
         </button>
       </form>
     </div>
@@ -407,7 +385,6 @@
                                   encargado: document.getElementById('formDatosEncargado').value,
                                   telefono: document.getElementById('formDatosTelefono').value,
                                   email: document.getElementById('formDatosEmail').value,
-                                  correo: document.getElementById('formDatosCorreo').value,
                                 fechaRegistro: document.getElementById('formDatosFecha').value || null,
                                 promedioGbBackup: parseInt(document.getElementById('formDatosPromedio').value) || 0,
                                 diasEntreBackups: parseInt(document.getElementById('formDatosDias').value) || 0                              };

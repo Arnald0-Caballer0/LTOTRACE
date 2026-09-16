@@ -29,6 +29,9 @@ public class UsuarioController {
     @Autowired
     private RolRepository rolRepository;
 
+    @Autowired
+    private ClienteDAO clienteDAO;
+
     /** Verifica que el usuario en sesión tenga rol ADMIN. */
     private boolean esAdmin(HttpSession session) {
         Usuario u = (session != null)
@@ -121,4 +124,56 @@ public class UsuarioController {
 
         return "redirect:/usuarios?ok=password";
     }
+    // ==========================================================
+    // PERMISOS DE USUARIO
+    // ==========================================================
+    @GetMapping("/{id}/permisos")
+    public String permisos(@PathVariable("id") Long id, HttpSession session, Model model) {
+        if (!esAdmin(session)) return "redirect:/?denegado";
+        Usuario u = usuarioRepository.findById(id).orElse(null);
+        if (u == null) return "redirect:/usuarios";
+
+        java.util.Set<Long> asignados = new java.util.HashSet<>();
+        for (Cliente c : u.getClientesAsignados()) asignados.add(c.getId());
+
+        model.addAttribute("usuario", u);
+        model.addAttribute("clientes", clienteDAO.findAll());
+        model.addAttribute("asignados", asignados);
+        return "permisos";
+    }
+
+    @PostMapping("/{id}/permisos")
+    public String guardarPermisos(@PathVariable("id") Long id,
+                                  @RequestParam(value = "rol", required = false) String rol,
+                                  @RequestParam(value = "veTodos", defaultValue = "false") boolean veTodos,
+                                  @RequestParam(value = "puedeMover", defaultValue = "false") boolean puedeMover,
+                                  @RequestParam(value = "puedeCrear", defaultValue = "false") boolean puedeCrear,
+                                  @RequestParam(value = "puedeRetirar", defaultValue = "false") boolean puedeRetirar,
+                                  @RequestParam(value = "clientes", required = false) java.util.List<Long> clientesIds,
+                                  HttpSession session) {
+        if (!esAdmin(session)) return "redirect:/?denegado";
+        Usuario u = usuarioRepository.findById(id).orElse(null);
+        if (u == null) return "redirect:/usuarios";
+
+        if (rol != null) {
+            String codigo = "ADMIN".equals(rol) ? "ADMIN" : "OPERADOR";
+            u.setRol(rolRepository.findByCodigo(codigo).orElse(u.getRol()));
+        }
+        u.setVeTodosClientes(veTodos);
+        u.setPuedeMoverCintas(puedeMover);
+        u.setPuedeCrearCintas(puedeCrear);
+        u.setPuedeRetirarCintas(puedeRetirar);
+
+        java.util.Set<Cliente> set = new java.util.HashSet<>();
+        if (!veTodos && clientesIds != null) {
+            for (Long cid : clientesIds) clienteDAO.findById(cid).ifPresent(set::add);
+        }
+        u.setClientesAsignados(set);
+        usuarioRepository.save(u);
+
+        auditoria.registrar("USUARIO_PERMISOS", "Actualizó permisos de " + u.getUsername());
+        return "redirect:/usuarios/" + id + "/permisos?ok=1";
+    }
+
+
 }
