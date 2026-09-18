@@ -59,8 +59,31 @@
 
     <script>
         (function () {
+            // 1) Barra fija: restaurar el estado guardado (sin animación en la carga)
+            if (localStorage.getItem('ltoRailExpanded') === '1') {
+                document.body.classList.add('lto-no-anim', 'rail-expanded');
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () { document.body.classList.remove('lto-no-anim'); });
+                });
+            }
             var t = document.getElementById('ltoRailToggle');
-            if (t) { t.addEventListener('click', function () { document.body.classList.toggle('rail-expanded'); }); }
+            if (t) {
+                t.addEventListener('click', function () {
+                    document.body.classList.toggle('rail-expanded');
+                    localStorage.setItem('ltoRailExpanded', document.body.classList.contains('rail-expanded') ? '1' : '0');
+                });
+            }
+
+            // 2) Mensajes de éxito que se cierran solos a los 4 segundos
+            window.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('.alert-success').forEach(function (el) {
+                    setTimeout(function () {
+                        el.style.transition = 'opacity .5s';
+                        el.style.opacity = '0';
+                        setTimeout(function () { el.style.display = 'none'; }, 500);
+                    }, 4000);
+                });
+            });
         })();
     </script>
 </nav>

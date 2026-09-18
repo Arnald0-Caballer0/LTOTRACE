@@ -10,8 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * Maneja el inicio y cierre de sesión.
- * El usuario autenticado se guarda en la sesión HTTP bajo la clave "usuarioLogueado".
+ * Maneja el inicio y cierre de sesión, con bloqueo por intentos fallidos.
  */
 @Controller
 public class LoginController {
@@ -24,7 +23,6 @@ public class LoginController {
     @Autowired
     private AuditoriaService auditoria;
 
-    // Muestra la pantalla de login
     @GetMapping("/login")
     public String mostrarLogin() {
         return "login";
@@ -35,16 +33,33 @@ public class LoginController {
                                 @RequestParam("password") String password,
                                 HttpServletRequest request,
                                 Model model) {
-        Usuario usuario = authService.autenticar(username, password);
-        if (usuario != null) {
-            HttpSession session = request.getSession(true);
-            session.setAttribute(SESSION_USER, usuario);
-            auditoria.registrar(usuario.getUsername(), "LOGIN", "Inicio de sesión exitoso", request.getRemoteAddr());
-            return "redirect:/";
+        String ip = request.getRemoteAddr();
+        ResultadoLogin r = authService.intentarLogin(username, password);
+
+        switch (r.getEstado()) {
+            case EXITO:
+                HttpSession session = request.getSession(true);
+                session.setAttribute(SESSION_USER, r.getUsuario());
+                auditoria.registrar(r.getUsuario().getUsername(), "LOGIN", "Inicio de sesión exitoso", ip);
+                return "redirect:/";
+
+            case BLOQUEADO_TEMPORAL:
+                auditoria.registrar(username, "LOGIN_BLOQUEADO", "Cuenta bloqueada temporalmente", ip);
+                model.addAttribute("error", "Cuenta bloqueada temporalmente. Intentá de nuevo en "
+                        + r.getMinutosRestantes() + " minuto(s).");
+                return "login";
+
+            case DESHABILITADO:
+                auditoria.registrar(username, "LOGIN_DESHABILITADO", "Acceso a cuenta deshabilitada", ip);
+                model.addAttribute("error", "Usuario deshabilitado. Contactá a un administrador.");
+                return "login";
+
+            case CREDENCIALES_INVALIDAS:
+            default:
+                auditoria.registrar(username, "LOGIN_FALLIDO", "Credenciales incorrectas", ip);
+                model.addAttribute("error", "Usuario o contraseña incorrectos.");
+                return "login";
         }
-        auditoria.registrar(username, "LOGIN_FALLIDO", "Credenciales incorrectas", request.getRemoteAddr());
-        model.addAttribute("error", "Usuario o contraseña incorrectos.");
-        return "login";
     }
 
     @GetMapping("/logout")

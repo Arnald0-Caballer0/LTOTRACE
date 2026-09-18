@@ -319,4 +319,42 @@ public class CintaController {
         return u.trim();
     }
 
+    // Crea una cinta individual por su barcode exacto
+    @PostMapping("/api/crear-cinta-individual")
+    @ResponseBody
+    public java.util.Map<String, Object> crearCintaIndividual(
+            @RequestParam("barcode") String barcode,
+            @RequestParam("clienteId") int clienteId,
+            @RequestParam("tecnologia") String tecnologia,
+            @RequestParam(value = "esLlenable", defaultValue = "true") boolean esLlenable,
+            HttpSession session) {
+
+        java.util.Map<String, Object> resp = new java.util.HashMap<>();
+        if (!permisoService.puedeCrear(session)) {
+            resp.put("status", "error");
+            resp.put("mensaje", "No tenés permiso para crear cintas.");
+            return resp;
+        }
+        if (barcode == null || barcode.trim().isEmpty()) {
+            resp.put("status", "error");
+            resp.put("mensaje", "El barcode no puede estar vacío.");
+            return resp;
+        }
+        java.util.List<String> barcodes = java.util.List.of(barcode.trim().toUpperCase());
+        java.util.Map<String, Object> res = cintaDAO.crearCintasLote(barcodes, clienteId, tecnologia, esLlenable);
+        java.util.List<?> creadas = (java.util.List<?>) res.get("creadas");
+        java.util.List<?> omitidas = (java.util.List<?>) res.get("omitidas");
+        if (creadas != null && !creadas.isEmpty()) {
+            resp.put("status", "success");
+            resp.put("mensaje", "Cinta " + barcode.trim().toUpperCase() + " creada correctamente.");
+        } else if (omitidas != null && !omitidas.isEmpty()) {
+            resp.put("status", "error");
+            resp.put("mensaje", "La cinta " + barcode.trim().toUpperCase() + " ya existe.");
+        } else {
+            resp.put("status", "error");
+            resp.put("mensaje", "No se pudo crear la cinta.");
+        }
+        return resp;
+    }
+
 }

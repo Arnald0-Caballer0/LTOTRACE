@@ -7,4 +7,5 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     // Busca un usuario activo por su nombre de usuario (para el login)
     Optional<Usuario> findByUsernameAndActivoTrue(String username);
+    Optional<Usuario> findByUsername(String username);
 }

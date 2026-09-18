@@ -6,10 +6,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Usuario del sistema. Incluye rol (FK) y permisos:
- *  - alcance de clientes (ve todos, o solo los asignados)
- *  - capacidades (mover / crear / retirar cintas)
- * El ADMIN siempre tiene acceso total (los permisos solo limitan a operadores).
+ * Usuario del sistema. Incluye rol (FK), permisos, y parámetros de seguridad
+ * (intentos fallidos y bloqueo). El ADMIN siempre tiene acceso total.
  */
 @Entity
 @Table(name = "usuarios")
@@ -57,6 +55,13 @@ public class Usuario {
             inverseJoinColumns = @JoinColumn(name = "cliente_id"))
     private Set<Cliente> clientesAsignados = new HashSet<>();
 
+    // --- Seguridad de acceso ---
+    @Column(name = "intentos_fallidos")
+    private Integer intentosFallidos = 0;
+
+    @Column(name = "bloqueado_hasta")
+    private LocalDateTime bloqueadoHasta;
+
     public Usuario() {}
 
     // --- Rol (compatibilidad) ---
@@ -64,8 +69,6 @@ public class Usuario {
     public void setRol(Rol rol) { this.rol = rol; }
     public String getRolCodigo() { return rol != null ? rol.getCodigo() : null; }
     public String getRolNombre() { return rol != null ? rol.getNombre() : null; }
-
-    /** True si es ADMIN (acceso total). */
     public boolean isAdmin() { return "ADMIN".equals(getRolCodigo()); }
 
     // --- Getters y Setters ---
@@ -101,4 +104,10 @@ public class Usuario {
 
     public Set<Cliente> getClientesAsignados() { return clientesAsignados; }
     public void setClientesAsignados(Set<Cliente> clientesAsignados) { this.clientesAsignados = clientesAsignados; }
+
+    public Integer getIntentosFallidos() { return intentosFallidos; }
+    public void setIntentosFallidos(Integer intentosFallidos) { this.intentosFallidos = intentosFallidos; }
+
+    public LocalDateTime getBloqueadoHasta() { return bloqueadoHasta; }
+    public void setBloqueadoHasta(LocalDateTime bloqueadoHasta) { this.bloqueadoHasta = bloqueadoHasta; }
 }

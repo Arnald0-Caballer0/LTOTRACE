@@ -29,6 +29,7 @@ public class ClienteController {
         java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
         model.addAttribute("listaClientes", permisoService.filtrarClientes(clienteDAO.findAll(), permitidos));
         model.addAttribute("puedeRetirar", permisoService.puedeRetirar(session));
+        model.addAttribute("clienteCacheado", session.getAttribute("clienteCacheado"));
         return "clientes";
     }
     // ... tu código anterior de @GetMapping("/clientes") ...
@@ -117,5 +118,18 @@ public class ClienteController {
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentDispositionFormData("attachment", "acta_retiro.pdf");
         return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
+    }
+
+    // Guarda (o limpia) el cliente seleccionado en la sesión, para recordarlo en el módulo
+    @PostMapping("/api/cliente-cacheado")
+    @ResponseBody
+    public String cachearCliente(@org.springframework.web.bind.annotation.RequestParam("id") Integer clienteId,
+                                 HttpSession session) {
+        if (clienteId == null || clienteId == 0) {
+            session.removeAttribute("clienteCacheado");
+        } else if (permisoService.puedeVerCliente(session, clienteId.longValue())) {
+            session.setAttribute("clienteCacheado", clienteId);
+        }
+        return "{\"status\":\"ok\"}";
     }
 }

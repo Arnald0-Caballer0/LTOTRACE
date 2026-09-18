@@ -52,6 +52,7 @@
                   th:data-encargado="${cliente.encargado}" th:data-telefono="${cliente.telefono}" th:data-correo="${cliente.email}"
                   th:data-promedio="${cliente.promedioGbBackup}" th:data-dias="${cliente.diasEntreBackups}" class="text-dark">          </option>
         </select>
+          <input type="hidden" id="clienteCacheadoId" th:value="${clienteCacheado}">
           <button id="btnNuevoCliente" class="btn btn-primary btn-sm" title="Nuevo cliente"><i class="bi bi-plus-lg"></i></button>
           <button class="btn btn-outline-secondary btn-sm btn-retroceder" title="Reiniciar vista"><i class="bi bi-arrow-counterclockwise"></i></button>
         </div>
@@ -698,7 +699,30 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-    if (op === 'datos' && btnEntrar) { btnEntrar.click(); }
+    // ---- Cliente cacheado en la sesión ----
+    let clienteRestaurado = false;
+    if (clienteSelect) {
+        // Guardar (o limpiar) la selección en la sesión cada vez que cambia
+        clienteSelect.addEventListener('change', function () {
+            fetch('/api/cliente-cacheado?id=' + (clienteSelect.value || 0), { method: 'POST' }).catch(() => {});
+        });
+        // Restaurar la última selección (también al pasar entre sub-módulos)
+        const cacheado = document.getElementById('clienteCacheadoId');
+        if (cacheado && cacheado.value) {
+            const existe = Array.from(clienteSelect.options).some(o => o.value === cacheado.value);
+            if (existe) {
+                clienteSelect.value = cacheado.value;
+                clienteRestaurado = true;
+            }
+        }
+    }
+
+    if (clienteRestaurado) {
+        // Carga la operación actual (inventario/retiro/datos) con el cliente restaurado
+        clienteSelect.dispatchEvent(new Event('change'));
+    } else if (op === 'datos' && btnEntrar) {
+        btnEntrar.click();
+    }
 });
 </script>
 

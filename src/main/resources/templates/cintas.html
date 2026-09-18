@@ -79,7 +79,7 @@
     </div>
 </div>
 
-<!-- ============ MODAL: Crear cintas por lote ============ -->
+<!-- ============ MODAL: Crear cintas ============ -->
 <div class="modal fade" id="modalCrear" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -87,65 +87,123 @@
                 <h5 class="modal-title fw-bold"><i class="bi bi-plus-square"></i> Crear cintas</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formCrear">
-                <div class="modal-body p-4">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small">Cliente</label>
-                            <select id="crearCliente" class="form-select" required>
-                                <option value="">Seleccionar...</option>
-                                <option th:each="cl : ${clientes}" th:value="${cl.id}" th:text="${cl.nombre}"></option>
-                            </select>
+            <div class="modal-body p-4">
+
+                <!-- Pestañas Individual / Por lote -->
+                <ul class="nav nav-tabs mb-4" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#tabIndividual" type="button">
+                            <i class="bi bi-1-square"></i> Individual
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabLote" type="button">
+                            <i class="bi bi-collection"></i> Por lote
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Campos comunes (fuera de las pestañas) -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Cliente</label>
+                        <select id="crearCliente" class="form-select" required>
+                            <option value="">Seleccionar...</option>
+                            <option th:each="cl : ${clientes}" th:value="${cl.id}" th:text="${cl.nombre}"></option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Tecnología</label>
+                        <input list="listaTec" id="crearTec" class="form-control" value="LTO-8" autocomplete="off" required>
+                        <datalist id="listaTec">
+                            <option value="LTO-6"></option>
+                            <option value="LTO-7"></option>
+                            <option value="LTO-8"></option>
+                            <option value="LTO-9"></option>
+                        </datalist>
+                    </div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="crearLlenable" checked>
+                    <label class="form-check-label fw-bold small" for="crearLlenable">
+                        Esta cinta se llena con datos
+                    </label>
+                    <div class="form-text small">Desmarcá si la cinta se usa para otro propósito y nunca se llena.</div>
+                </div>
+
+                <hr class="my-3">
+
+                <div class="tab-content">
+
+                    <!-- TAB: Individual -->
+                    <div class="tab-pane fade show active" id="tabIndividual" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold small">Barcode</label>
+                                <input type="text" id="crearBarcodeInd" class="form-control" placeholder="Ej: CC0078L8" maxlength="20" style="text-transform:uppercase;">
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small">Tecnología</label>
-                            <input list="listaTec" id="crearTec" class="form-control" value="LTO-8" autocomplete="off" required>
-                            <datalist id="listaTec">
-                                <option value="LTO-6"></option>
-                                <option value="LTO-7"></option>
-                                <option value="LTO-8"></option>
-                                <option value="LTO-9"></option>
-                            </datalist>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="button" id="btnCrearIndividual" class="btn btn-primary fw-bold">
+                                <i class="bi bi-check-lg"></i> Crear cinta
+                            </button>
                         </div>
                     </div>
 
-                    <hr class="my-4">
+                    <!-- TAB: Por lote -->
+                    <div class="tab-pane fade" id="tabLote" role="tabpanel">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small">Cantidad</label>
+                                <input type="number" id="crearCantidad" class="form-control" min="1" max="500" value="5">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small">Nombre (plantilla)</label>
+                                <input type="text" id="crearPlantilla" class="form-control" placeholder="CC00--L8">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold small">Número inicial</label>
+                                <input type="number" id="crearInicio" class="form-control" min="0" value="1">
+                            </div>
+                        </div>
+                        <div class="alert alert-light border mt-3 mb-0 small">
+                            <div class="text-muted mb-1">
+                                <i class="bi bi-info-circle"></i>
+                                Usá <strong>guiones</strong> donde va el número automático.
+                                Ej: <code>CC00--L8</code> (2 guiones = 2 dígitos).
+                            </div>
+                            <div class="fw-bold">Se crearán: <span id="crearPreview" class="text-primary">—</span></div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="button" id="btnCrearLote" class="btn btn-primary fw-bold">
+                                <i class="bi bi-check-lg"></i> Crear lote
+                            </button>
+                        </div>
+                    </div>
 
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Cantidad</label>
-                            <input type="number" id="crearCantidad" class="form-control" min="1" max="500" value="5" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small">Nombre (plantilla)</label>
-                            <input type="text" id="crearPlantilla" class="form-control" placeholder="CC00--L8" required>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold small">Número inicial</label>
-                            <input type="number" id="crearInicio" class="form-control" min="0" value="1" required>
-                        </div>
-                    </div>
-                    <div class="form-check mt-3">
-                        <input class="form-check-input" type="checkbox" id="crearLlenable" checked>
-                        <label class="form-check-label fw-bold small" for="crearLlenable">
-                            Esta cinta se llena con datos
-                        </label>
-                        <div class="form-text small">Desmarcá si la cinta se usa para otro propósito y nunca se llena (no entra en el cálculo de llenado).</div>
-                    </div>
-                    <div class="alert alert-light border mt-3 mb-0 small">
-                        <div class="text-muted mb-1">
-                            <i class="bi bi-info-circle"></i>
-                            Usá <strong>guiones</strong> donde va el número automático.
-                            Ej: <code>CC00--L8</code> (2 guiones = 2 dígitos) o <code>SUD---L9</code> (3 guiones = 3 dígitos).
-                        </div>
-                        <div class="fw-bold">Se crearán: <span id="crearPreview" class="text-primary">—</span></div>
-                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-check-lg"></i> Crear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ MODAL: ¿Crear más cintas? ============ -->
+<div class="modal fade" id="modalMasCintas" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow text-center">
+            <div class="modal-body p-4">
+                <i class="bi bi-check-circle text-success" style="font-size:2.5rem;"></i>
+                <p class="fw-bold mt-3 mb-1" id="msgExitoCrear">Cintas creadas correctamente.</p>
+                <p class="text-muted small">¿Querés crear más cintas?</p>
+                <div class="d-flex gap-2 justify-content-center mt-3">
+                    <button type="button" class="btn btn-primary fw-bold" id="btnSiMas">
+                        <i class="bi bi-plus-lg"></i> Sí, crear más
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="btnNoMas">
+                        No, cerrar
+                    </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
@@ -182,17 +240,21 @@
         fTec.addEventListener('change', filtrar);
         fUbi.addEventListener('change', filtrar);
 
+        // ---- Modales ----
         const modalCrear = new bootstrap.Modal(document.getElementById('modalCrear'));
-        document.getElementById('btnCrearCintas').addEventListener('click', () => modalCrear.show());
+        const modalMas = new bootstrap.Modal(document.getElementById('modalMasCintas'));
+        const btnCrear = document.getElementById('btnCrearCintas');
+        if (btnCrear) btnCrear.addEventListener('click', () => modalCrear.show());
         if (new URLSearchParams(window.location.search).has('crear')) { modalCrear.show(); }
 
+        // ---- Preview del lote ----
         function generarPreview() {
             const plantilla = document.getElementById('crearPlantilla').value;
             const ini = parseInt(document.getElementById('crearInicio').value) || 0;
             const cant = parseInt(document.getElementById('crearCantidad').value) || 0;
             const prev = document.getElementById('crearPreview');
             const pri = plantilla.indexOf('-'), ult = plantilla.lastIndexOf('-');
-            if (pri < 0 || cant < 1) { prev.textContent = '—'; return; }
+            if (pri < 0 || cant < 1) { prev.textContent = '\u2014'; return; }
             let contig = true;
             for (let i = pri; i <= ult; i++) { if (plantilla[i] !== '-') { contig = false; break; } }
             if (!contig) { prev.textContent = 'Los guiones deben ir juntos'; return; }
@@ -204,30 +266,66 @@
         ['crearPlantilla', 'crearInicio', 'crearCantidad'].forEach(id =>
             document.getElementById(id).addEventListener('input', generarPreview));
 
-        document.getElementById('formCrear').addEventListener('submit', function (e) {
-            e.preventDefault();
+        // ---- Éxito: mostrar el modal "¿Crear más?" ----
+        function mostrarExito(msg) {
+            modalCrear.hide();
+            document.getElementById('msgExitoCrear').textContent = msg;
+            setTimeout(() => modalMas.show(), 300);
+        }
+        document.getElementById('btnSiMas').addEventListener('click', function () {
+            modalMas.hide();
+            document.getElementById('crearBarcodeInd').value = '';
+            setTimeout(() => modalCrear.show(), 300);
+        });
+        document.getElementById('btnNoMas').addEventListener('click', function () {
+            modalMas.hide();
+            window.location.href = '/cintas';
+        });
+
+        // ---- Crear individual ----
+        document.getElementById('btnCrearIndividual').addEventListener('click', function () {
+            const barcode = document.getElementById('crearBarcodeInd').value.trim();
+            if (!barcode) { alert('Ingresá el barcode de la cinta.'); return; }
             if (!document.getElementById('crearCliente').value) { alert('Seleccioná un cliente.'); return; }
+            const params = new URLSearchParams();
+            params.append('barcode', barcode);
+            params.append('clienteId', document.getElementById('crearCliente').value);
+            params.append('tecnologia', document.getElementById('crearTec').value.trim());
+            params.append('esLlenable', document.getElementById('crearLlenable').checked);
+            this.disabled = true;
+            fetch('/api/crear-cinta-individual', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'success') { mostrarExito(data.mensaje); }
+                    else { alert(data.mensaje || 'Error al crear.'); }
+                })
+                .catch(() => alert('Error de conexión.'))
+                .finally(() => this.disabled = false);
+        });
+
+        // ---- Crear por lote ----
+        document.getElementById('btnCrearLote').addEventListener('click', function () {
+            if (!document.getElementById('crearCliente').value) { alert('Seleccioná un cliente.'); return; }
+            const plantilla = document.getElementById('crearPlantilla').value.trim();
+            if (!plantilla) { alert('Ingresá la plantilla del nombre.'); return; }
             const params = new URLSearchParams();
             params.append('clienteId', document.getElementById('crearCliente').value);
             params.append('tecnologia', document.getElementById('crearTec').value.trim());
-            params.append('plantilla', document.getElementById('crearPlantilla').value.trim());
+            params.append('plantilla', plantilla);
             params.append('numeroInicial', document.getElementById('crearInicio').value);
             params.append('cantidad', document.getElementById('crearCantidad').value);
             params.append('esLlenable', document.getElementById('crearLlenable').checked);
-            fetch('/api/crear-cintas', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.status !== 'success') { alert(data.mensaje || 'Error al crear.'); return; }
-                let msg = 'Cintas creadas: ' + (data.creadas ? data.creadas.length : 0);
-                if (data.omitidas && data.omitidas.length) { msg += '\nOmitidas (ya existían): ' + data.omitidas.join(', '); }
-                alert(msg);
-                window.location.href = '/cintas';
-            })
-            .catch(() => alert('Error al crear las cintas.'));
+            this.disabled = true;
+            fetch('/api/crear-cintas', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status !== 'success') { alert(data.mensaje || 'Error al crear.'); return; }
+                    let msg = 'Cintas creadas: ' + (data.creadas ? data.creadas.length : 0);
+                    if (data.omitidas && data.omitidas.length) { msg += ' (omitidas: ' + data.omitidas.length + ')'; }
+                    mostrarExito(msg);
+                })
+                .catch(() => alert('Error al crear las cintas.'))
+                .finally(() => this.disabled = false);
         });
     });
 </script>

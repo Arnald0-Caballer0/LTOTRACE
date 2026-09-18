@@ -206,3 +206,8 @@ body.rail-expanded .main-wrapper {
 /* ===== Offset del módulo Cliente para la barra lateral ===== */
 .layout-wrapper { margin-left: 64px !important; transition: margin-left 0.18s ease; }
 body.rail-expanded .layout-wrapper { margin-left: 220px !important; }
+/* Evita la animación de la barra al restaurar su estado en la carga */
+body.lto-no-anim .lto-rail,
+body.lto-no-anim .app-content,
+body.lto-no-anim .main-wrapper,
+body.lto-no-anim .layout-wrapper { transition: none !important; }
