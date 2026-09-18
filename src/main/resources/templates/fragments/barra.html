@@ -43,6 +43,10 @@
             <a href="/auditoria"><i class="bi bi-journal-text"></i><span class="lto-rail-label">Auditoría</span></a>
         </li>
 
+        <li th:classappend="${activo == 'conciliacion'} ? 'activo'">
+            <a href="/auditoria-inventario"><i class="bi bi-clipboard-check"></i><span class="lto-rail-label">Conciliación</span></a>
+        </li>
+
         <li class="tiene-sub" th:classappend="${activo == 'configuracion'} ? 'activo'">
             <a href="/configuracion/tecnologias"><i class="bi bi-gear"></i><span class="lto-rail-label">Configuración</span></a>
             <div class="lto-flyout">

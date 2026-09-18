@@ -264,5 +264,54 @@ public class LibraryService {
             return false;
         }
     }
+    // Devuelve el inventario físico de la librería: barcode -> ubicación física (slot o drive).
+    // Reúne los slots de la partición y las cintas cargadas en los drives.
+    public java.util.Map<String, String> obtenerInventarioFisico() {
+        java.util.Map<String, String> fisico = new java.util.HashMap<>();
+        String token = obtenerToken();          // también carga ip/user/pass desde la config
+        if (token == null) return fisico;
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", token);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        ObjectMapper mapper = new ObjectMapper();
+
+        // 1) Slots de la partición
+        try {
+            String url = "https://" + ip + ":3031/rest/partition/inventory?partitionNum=" + cfg.get("ts4300.particion");
+            ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            JsonNode slots = mapper.readTree(resp.getBody()).path("Slots");
+            if (slots.isArray()) {
+                for (JsonNode s : slots) {
+                    if ("TRUE".equalsIgnoreCase(s.path("Cartridge").asText()) && s.has("Barcode")) {
+                        String bc = s.path("Barcode").asText().trim();
+                        if (!bc.isEmpty()) fisico.put(bc.toUpperCase(), "Slot " + s.path("LogicalNumber").asText());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error leyendo slots de la TS4300: " + e.getMessage());
+        }
+
+        // 2) Cintas en los drives
+        try {
+            String url = "https://" + ip + ":3031/rest/drive/information";
+            ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            JsonNode root = mapper.readTree(resp.getBody());
+            if (root.isArray()) {
+                for (JsonNode d : root) {
+                    JsonNode bcNode = d.get("Barcode");
+                    if (bcNode != null && !bcNode.isNull()) {
+                        String bc = bcNode.asText().trim();
+                        if (!bc.isEmpty()) fisico.put(bc.toUpperCase(), "Drive " + d.path("LogicalNumber").asText());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error leyendo drives de la TS4300: " + e.getMessage());
+        }
+
+        return fisico;
+    }
 
 }
