@@ -5,7 +5,7 @@
     <title>LTOTRACE · Tecnologías</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/css/lto.css">
+    <link rel="stylesheet" href="/css/lto.css?v=3">
     <style>
         body, html { height: 100%; overflow: hidden; font-family: 'Inter','Segoe UI',sans-serif; }
         .modulo-wrapper { padding: 1rem 1.5rem; height: 100vh; display: flex; flex-direction: column; }
@@ -41,12 +41,6 @@
             </div>
         </header>
 
-        <div th:if="${param.ok != null and param.ok[0] == 'creado'}" class="alert alert-success py-2">Tecnología creada.</div>
-        <div th:if="${param.ok != null and param.ok[0] == 'editado'}" class="alert alert-success py-2">Tecnología actualizada.</div>
-        <div th:if="${param.ok != null and param.ok[0] == 'eliminado'}" class="alert alert-success py-2">Tecnología eliminada.</div>
-        <div th:if="${param.error != null and param.error[0] == 'existe'}" class="alert alert-danger py-2">Ese nombre ya existe.</div>
-        <div th:if="${param.error != null and param.error[0] == 'datos'}" class="alert alert-danger py-2">Datos inválidos (nombre y capacidad son obligatorios).</div>
-        <div th:if="${param.error != null and param.error[0] == 'enuso'}" class="alert alert-warning py-2">No se puede eliminar: hay cintas usando esa tecnología.</div>
 
         <div class="modulo-body">
             <div class="tabla-card">
@@ -80,7 +74,7 @@
                                         th:data-generacion="${t.generacion}" th:data-capacidad="${t.capacidadGb}"
                                         title="Editar"><i class="bi bi-pencil"></i></button>
                                 <form th:action="@{'/configuracion/tecnologias/' + ${t.id} + '/eliminar'}" method="post" class="d-inline"
-                                      onsubmit="return confirm('¿Eliminar esta tecnología?');">
+                                      data-confirm="La tecnología se eliminará definitivamente. Solo es posible si ninguna cinta la utiliza." data-confirm-titulo="Eliminar tecnología" data-confirm-ok="Eliminar" data-confirm-peligro="true">
                                     <button type="submit" class="btn-accion peligro" title="Eliminar"><i class="bi bi-trash"></i></button>
                                 </form>
                             </td>

@@ -211,3 +211,38 @@ body.lto-no-anim .lto-rail,
 body.lto-no-anim .app-content,
 body.lto-no-anim .main-wrapper,
 body.lto-no-anim .layout-wrapper { transition: none !important; }
+
+/* ===== Usuario logueado en la barra lateral ===== */
+.lto-rail-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    color: #cfd3cc;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    margin-bottom: 4px;
+}
+.lto-rail-user i {
+    font-size: 1.5rem;
+    min-width: 24px;
+    text-align: center;
+    color: var(--lto-azul);
+}
+.lto-user-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+}
+.lto-user-nombre {
+    font-weight: 600;
+    font-size: .85rem;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.lto-user-rol {
+    font-size: .72rem;
+    color: var(--lto-gris);
+}

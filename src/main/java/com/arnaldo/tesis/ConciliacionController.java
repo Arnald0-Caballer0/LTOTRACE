@@ -86,12 +86,17 @@ public class ConciliacionController {
         }
 
         Usuario u = (Usuario) session.getAttribute(LoginController.SESSION_USER);
-        AuditoriaInventario aud = conciliacionService.ejecutar(u.getUsername());
-        auditoria.registrar(u.getUsername(), "AUDITORIA_INVENTARIO",
-                "Ejecutó auditoría de inventario: " + aud.getTotalInconsistencias() + " inconsistencias", null);
-
-        resp.put("status", "success");
-        resp.put("totalInconsistencias", aud.getTotalInconsistencias());
+        try {
+            AuditoriaInventario aud = conciliacionService.ejecutar(u.getUsername());
+            auditoria.registrar(u.getUsername(), "AUDITORIA_INVENTARIO",
+                    "Ejecutó auditoría de inventario: " + aud.getTotalInconsistencias() + " inconsistencias", null);
+            resp.put("status", "success");
+            resp.put("totalInconsistencias", aud.getTotalInconsistencias());
+        } catch (IllegalStateException ex) {
+            // Por ejemplo, TS4300 no disponible: no se genera una auditoría inválida
+            resp.put("status", "error");
+            resp.put("mensaje", ex.getMessage());
+        }
         return resp;
     }
 }

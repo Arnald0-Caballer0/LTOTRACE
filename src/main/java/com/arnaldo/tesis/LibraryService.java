@@ -96,7 +96,9 @@ public class LibraryService {
                     // Buscamos LogicalNumber como String "1"
                     String logicalNum = drive.has("LogicalNumber") ? drive.get("LogicalNumber").asText() : "";
 
-                    if ("3".equals(logicalNum)) {
+                    String driveCfg = cfg.get("ts4300.drive");
+                    if (driveCfg == null || driveCfg.isBlank()) driveCfg = "3";
+                    if (driveCfg.trim().equals(logicalNum)) {
                         // Extraemos el Barcode de la cinta
                         JsonNode barcodeNode = drive.get("Barcode");
                         if (barcodeNode != null && !barcodeNode.isNull()) {
@@ -269,7 +271,7 @@ public class LibraryService {
     public java.util.Map<String, String> obtenerInventarioFisico() {
         java.util.Map<String, String> fisico = new java.util.HashMap<>();
         String token = obtenerToken();          // también carga ip/user/pass desde la config
-        if (token == null) return fisico;
+        if (token == null) return null;
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", token);

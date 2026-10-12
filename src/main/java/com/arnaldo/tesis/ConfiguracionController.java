@@ -66,6 +66,7 @@ public class ConfiguracionController {
         model.addAttribute("ts_passSet", cfg.tieneSecreto("ts4300.password"));
         model.addAttribute("ibmi_host", cfg.get("ibmi.host"));
         model.addAttribute("ibmi_usuario", cfg.get("ibmi.usuario"));
+        model.addAttribute("ibmi_dispositivo", cfg.get("ibmi.dispositivo"));
         model.addAttribute("ibmi_passSet", cfg.tieneSecreto("ibmi.password"));
         return "libreria";
     }
@@ -83,6 +84,7 @@ public class ConfiguracionController {
 
         cfg.set("ibmi.host", p.get("ibmi_host"));
         cfg.set("ibmi.usuario", p.get("ibmi_usuario"));
+        cfg.set("ibmi.dispositivo", p.get("ibmi_dispositivo") != null ? p.get("ibmi_dispositivo").trim().toUpperCase() : "");
         if (p.get("ibmi_password") != null && !p.get("ibmi_password").isBlank())
             cfg.setSecreto("ibmi.password", p.get("ibmi_password"));
         auditoria.registrar("CONFIG_LIBRERIA", "Actualizó la configuración de conexión (TS4300 / IBM i)");

@@ -69,6 +69,11 @@
             <!-- Mensaje de error -->
             <div th:if="${error}" class="alert alert-danger py-2 small" role="alert" th:text="${error}"></div>
 
+            <!-- Aviso de sesión expirada -->
+            <div th:if="${param.expirada}" class="alert alert-warning py-2 small" role="alert">
+                Tu sesión expiró por inactividad. Iniciá sesión nuevamente.
+            </div>
+
             <!-- Aviso de cierre de sesión -->
             <div th:if="${param.logout}" class="alert alert-success py-2 small" role="alert">
                 Sesión cerrada correctamente.

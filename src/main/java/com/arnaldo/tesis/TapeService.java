@@ -20,19 +20,7 @@ public class TapeService {
                 for (AS400Message msg : messageList) {
                     // El mensaje CPC6778 dice: "Volume XXXXXX found on device YYYYYY."
                     if (msg.getID().equals("CPC6778")) {
-                        String texto = msg.getText();
-                        String[] palabras = texto.split(" ");
-
-                        // Buscamos la posición de la palabra "volumen" (o "Volume")
-                        for (int i = 0; i < palabras.length; i++) {
-                            if (palabras[i].equalsIgnoreCase("volumen") || palabras[i].equalsIgnoreCase("volume")) {
-                                // El ID de la cinta siempre es la siguiente palabra
-                                if (i + 1 < palabras.length) {
-                                    volumeId = palabras[i + 1].replace(".", "").trim(); // Quitamos el punto final si existe
-                                }
-                                break;
-                            }
-                        }
+                        volumeId = extraerVolumeId(msg.getText());
                         break;
                     }
                 }
@@ -46,5 +34,24 @@ public class TapeService {
             System.err.println("Error en la comunicación con el servidor Power: " + e.getMessage());
         }
         return volumeId;
+    }
+
+    /**
+     * Extrae el Volume ID del texto del mensaje CPC6778.
+     * Busca la palabra "Volume"/"Volumen" y toma la palabra siguiente,
+     * quitando el punto final si lo tuviera. Devuelve null si no lo encuentra.
+     * (Método aislado para poder probarlo sin conexión al IBM i.)
+     */
+    public static String extraerVolumeId(String textoMensaje) {
+        if (textoMensaje == null) return null;
+        String[] palabras = textoMensaje.split(" ");
+        for (int i = 0; i < palabras.length; i++) {
+            if (palabras[i].equalsIgnoreCase("volumen") || palabras[i].equalsIgnoreCase("volume")) {
+                if (i + 1 < palabras.length) {
+                    return palabras[i + 1].replace(".", "").trim();
+                }
+            }
+        }
+        return null;
     }
 }

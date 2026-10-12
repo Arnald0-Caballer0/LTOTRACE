@@ -6,7 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDate; // Importante para la fecha
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "clientes")
@@ -20,24 +20,23 @@ public class Cliente {
     private String encargado;
     private String telefono;
 
-    // Mapeamos los dos campos de correo que mencionaste
     private String email;
-    private String correo;
 
     @Column(name = "fecha_registro")
     private LocalDate fechaRegistro;
 
-    // --- NUEVO: datos para estimar el llenado de las cintas ---
     @Column(name = "promedio_gb_backup")
-    private Integer promedioGbBackup = 0;   // GB que escribe este cliente por backup
+    private Integer promedioGbBackup = 0;
 
     @Column(name = "dias_entre_backups")
-    private Integer diasEntreBackups = 0;   // Cada cuántos días hace backup
+    private Integer diasEntreBackups = 0;
 
-    // Constructor vacío
+    // Baja lógica: un cliente inhabilitado no se elimina (se preserva la trazabilidad)
+    @Column(name = "activo")
+    private Boolean activo = true;
+
     public Cliente() {}
 
-    // --- GETTERS Y SETTERS ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -53,9 +52,6 @@ public class Cliente {
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
-    public String getCorreo() { return correo; }
-    public void setCorreo(String correo) { this.correo = correo; }
-
     public LocalDate getFechaRegistro() { return fechaRegistro; }
     public void setFechaRegistro(LocalDate fechaRegistro) { this.fechaRegistro = fechaRegistro; }
 
@@ -64,4 +60,7 @@ public class Cliente {
 
     public Integer getDiasEntreBackups() { return diasEntreBackups; }
     public void setDiasEntreBackups(Integer diasEntreBackups) { this.diasEntreBackups = diasEntreBackups; }
+
+    public Boolean getActivo() { return activo; }
+    public void setActivo(Boolean activo) { this.activo = activo; }
 }

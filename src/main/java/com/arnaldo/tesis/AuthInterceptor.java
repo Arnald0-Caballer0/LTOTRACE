@@ -29,7 +29,16 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true; // Deja pasar
         }
 
-        // No autenticado: lo mandamos al login
+        // Llamadas de la API (fetch): respondemos 401 en JSON para que la pantalla avise al usuario
+        if (request.getRequestURI().startsWith(request.getContextPath() + "/api/")) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"status\":\"error\",\"mensaje\":\"Tu sesión expiró. Iniciá sesión nuevamente.\"}");
+            return false;
+        }
+
+        // Navegación normal: lo mandamos al login (el aviso de sesión expirada solo se muestra
+        // cuando la sesión vence en medio de una acción, ver lto-ui.js)
         response.sendRedirect(request.getContextPath() + "/login");
         return false;
     }

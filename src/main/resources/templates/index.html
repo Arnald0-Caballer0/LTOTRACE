@@ -140,7 +140,7 @@
         .border-LTO-6 { border-left-color: #4a5568 !important; } /* Color por si hay cintas LTO-6 */
 
     </style>
-    <link rel="stylesheet" href="/css/lto.css">
+    <link rel="stylesheet" href="/css/lto.css?v=3">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -283,7 +283,7 @@
                             <h5 class="client-name mb-3" th:text="${cinta.nombreCliente}"></h5>
                             <div class="volume-box text-center mb-3 py-2">
                                 <small class="text-muted d-block small mb-1">VOLUME ID (IBMi)</small>
-                                <div th:text="${cinta.volumeId}" th:class="${cinta.volumeId == 'PENDIENTE'} ? 'text-danger fw-bold h5 mb-0' : 'text-primary fw-bold h5 mb-0'"></div>
+                                <div th:attr="data-vol-barcode=${cinta.barcode}" th:text="${cinta.volumeId}" th:class="${cinta.volumeId == 'PENDIENTE'} ? 'text-danger fw-bold h5 mb-0' : 'text-primary fw-bold h5 mb-0'"></div>
                             </div>
                             <!-- Desgaste y llenado -->
                             <div class="mb-3">
@@ -310,8 +310,10 @@
                                      th:text="${cinta.textoLlenado}"></div>
                             </div>
                             <div class="d-grid gap-2">
-                                <a th:if="${cinta.volumeId == 'PENDIENTE'}" th:href="@{/relacionar/{id}(id=${cinta.barcode})}" class="btn btn-dark btn-sm fw-bold">Relacionar Nombre</a>
-                                <a th:unless="${cinta.volumeId == 'PENDIENTE'}" th:href="@{/reiniciar/{id}(id=${cinta.barcode})}" class="btn btn-outline-danger btn-sm fw-bold" onclick="return confirm('¿Reiniciar Cinta?')">Reiniciar Cinta</a>
+                                <button type="button" class="btn btn-dark btn-sm fw-bold btn-relacionar" th:data-barcode="${cinta.barcode}"
+                                        th:classappend="${cinta.volumeId != 'PENDIENTE'} ? 'd-none'"><i class="bi bi-link-45deg"></i> Relacionar Volume ID</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm fw-bold btn-reiniciar" th:data-barcode="${cinta.barcode}"
+                                        th:classappend="${cinta.volumeId == 'PENDIENTE'} ? 'd-none'"><i class="bi bi-arrow-counterclockwise"></i> Reiniciar Volume ID</button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm fw-bold btn-historial"
                                         th:data-barcode="${cinta.barcode}">
                                     <i class="bi bi-clock-history"></i> Ver historial
@@ -415,23 +417,23 @@
     function liberarDrive() {
         const cinta = document.getElementById('cintaBadge');
         const barcode = cinta ? cinta.innerText.trim() : '';
-        if (esDriveVacio(barcode)) { alert('No hay ninguna cinta en el drive.'); return; }
-        if (confirm('Se liberará el drive: la cinta [ ' + barcode + ' ] se moverá a un slot vacío de la librería.\n\n¿Continuar?')) {
+        if (esDriveVacio(barcode)) { LTO.toast('No hay ninguna cinta en el drive.', 'warning'); return; }
+        LTO.confirm('La cinta ' + barcode + ' se moverá del drive a un slot vacío de la librería.', { titulo: 'Liberar drive', textoAceptar: 'Liberar drive' }).then(function (ok) { if (!ok) return;
             const btn = document.getElementById('btnLiberarDrive');
             if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Liberando...'; }
             fetch('/api/mover-cinta-robot?barcode=' + encodeURIComponent(barcode), { method: 'POST' })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.status === 'success') { alert('Drive liberado: ' + data.mensaje); }
-                    else { alert('Error: ' + data.mensaje); }
+                    if (data.status === 'success') { LTO.toast(data.mensaje, 'success', { titulo: 'Drive liberado' }); }
+                    else { LTO.toast(data.mensaje, 'error', { titulo: 'No se pudo liberar el drive' }); }
                     actualizarEstadoLibreria();
                 })
-                .catch(() => alert('Error de conexión al liberar el drive.'))
+                .catch(() => LTO.toast('Error de conexión al liberar el drive.', 'error'))
                 .finally(() => {
                     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-eject"></i> Liberar drive'; }
                     setTimeout(actualizarBotonLiberar, 500);
                 });
-        }
+        });
     }
 
     setInterval(actualizarEstadoLibreria, 5000);
@@ -530,7 +532,7 @@
                     // ENVIAMOS EL DÍA COMO PARÁMETRO EN LA URL
                     window.location.href = `/marcar-semanal/${barcode}?dia=${diaSeleccionadoGlobal}&clienteId=${clienteSeleccionado || ''}&tecnologia=${tecnologiaSeleccionada || ''}`;
                 } else {
-                    alert("Por favor, seleccione una cinta de la lista.");
+                    LTO.toast('Seleccioná una cinta de la lista.', 'warning');
                 }
             });
         }
@@ -540,10 +542,10 @@
     // FUNCIÓN PARA ENVIAR ORDEN AL ROBOT
     // ==========================================
     function procesarMovimientoFisico(barcode) {
-        if (confirm(`ATENCIÓN\n\nSe enviará una orden al robot TS4300 para mover físicamente la cinta [ ${barcode} ].\n\n¿Estás completamente seguro de proceder?`)) {
+        LTO.confirm(`Se enviará una orden al robot TS4300 para mover físicamente la cinta ${barcode}.`, { titulo: 'Mover cinta con el robot', textoAceptar: 'Mover cinta', peligro: true }).then(function (ok) { if (!ok) return;
 
             // Opcional: Mostrar un pequeño aviso mientras se comunica
-            alert("Enviando comando al robot. Esto tomará unos segundos...");
+            LTO.toast('Enviando la orden al robot. Esto puede tardar unos segundos…', 'info', { titulo: 'Robot TS4300' });
 
             fetch(`/api/mover-cinta-robot?barcode=${barcode}`, {
                 method: 'POST'
@@ -551,18 +553,18 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    alert('ÉXITO: ' + data.mensaje);
+                    LTO.toast(data.mensaje, 'success', { titulo: 'Movimiento completado' });
                     // Forzamos que se actualice el estado del robot y el drive en pantalla
                     actualizarEstadoLibreria();
                 } else {
-                    alert('ERROR:\n' + data.mensaje);
+                    LTO.toast(data.mensaje, 'error', { titulo: 'No se pudo mover la cinta' });
                 }
             })
             .catch(error => {
                 console.error('Error de conexión:', error);
-                alert('Ocurrió un error de red al intentar comunicarse con el servidor Java.');
+                LTO.toast('No se pudo comunicar con el servidor. Verificá la conexión.', 'error');
             });
-        }
+        });
     }
 
     // Detecta el clic en cualquier botón "Ver historial"
@@ -658,6 +660,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let chartsCargados = false;
 
     function mostrar(vista) {
+        try { sessionStorage.setItem('ltoVistaDashboard', vista); } catch (e) {}
         const esRes = (vista === 'resumen');
         elemRes.forEach(e => e.style.display = esRes ? '' : 'none');
         elemInv.forEach(e => e.style.display = esRes ? 'none' : '');
@@ -670,7 +673,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Si hay un filtro activo, arrancamos en Inventario; si no, en Resumen
     const params = new URLSearchParams(location.search);
-    mostrar((params.has('clienteId') || params.has('tecnologia')) ? 'inventario' : 'resumen');
+    // La vista se recuerda durante la sesión; con un filtro activo se abre Inventario
+    let vistaInicial = 'resumen';
+    try { vistaInicial = sessionStorage.getItem('ltoVistaDashboard') || 'resumen'; } catch (e) {}
+    if (params.has('clienteId') || params.has('tecnologia')) vistaInicial = 'inventario';
+    mostrar(vistaInicial);
 
     function cargarGraficos() {
         fetch('/api/dashboard-stats').then(r => r.json()).then(d => {
@@ -711,5 +718,61 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+
+<script>
+/* Relacionar / reiniciar el Volume ID sin recargar la pantalla */
+(function () {
+    function actualizarTarjeta(barcode, volumeId) {
+        const vol = document.querySelector('[data-vol-barcode="' + barcode + '"]');
+        if (vol) {
+            vol.textContent = volumeId;
+            vol.className = (volumeId === 'PENDIENTE' ? 'text-danger' : 'text-primary') + ' fw-bold h5 mb-0';
+        }
+        const pendiente = (volumeId === 'PENDIENTE');
+        document.querySelectorAll('.btn-relacionar[data-barcode="' + barcode + '"]').forEach(b => b.classList.toggle('d-none', !pendiente));
+        document.querySelectorAll('.btn-reiniciar[data-barcode="' + barcode + '"]').forEach(b => b.classList.toggle('d-none', pendiente));
+    }
+    function cargando(btn, texto) {
+        btn.dataset.html = btn.innerHTML; btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + texto;
+    }
+    function restaurar(btn) { btn.disabled = false; if (btn.dataset.html) btn.innerHTML = btn.dataset.html; }
+
+    document.addEventListener('click', function (e) {
+        const rel = e.target.closest('.btn-relacionar');
+        if (rel) {
+            const barcode = rel.getAttribute('data-barcode');
+            cargando(rel, 'Consultando IBM i…');
+            fetch('/api/relacionar/' + encodeURIComponent(barcode), { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'success') { actualizarTarjeta(barcode, d.volumeId); LTO.toast(d.mensaje, 'success', { titulo: 'Volume ID relacionado' }); }
+                    else { LTO.toast(d.mensaje, 'error', { titulo: 'No se pudo relacionar' }); }
+                })
+                .catch(() => LTO.toast('No se pudo comunicar con el servidor. Verificá la conexión.', 'error'))
+                .finally(() => restaurar(rel));
+            return;
+        }
+        const rei = e.target.closest('.btn-reiniciar');
+        if (rei) {
+            const barcode = rei.getAttribute('data-barcode');
+            LTO.confirm('El Volume ID de la cinta ' + barcode + ' se borrará y volverá al estado PENDIENTE. Deberás relacionarla nuevamente.',
+                        { titulo: 'Reiniciar Volume ID', textoAceptar: 'Reiniciar', peligro: true })
+                .then(function (ok) {
+                    if (!ok) return;
+                    cargando(rei, 'Reiniciando…');
+                    fetch('/api/reiniciar/' + encodeURIComponent(barcode), { method: 'POST' })
+                        .then(r => r.json())
+                        .then(d => {
+                            if (d.status === 'success') { actualizarTarjeta(barcode, 'PENDIENTE'); LTO.toast(d.mensaje, 'success', { titulo: 'Volume ID reiniciado' }); }
+                            else { LTO.toast(d.mensaje, 'error'); }
+                        })
+                        .catch(() => LTO.toast('No se pudo comunicar con el servidor. Verificá la conexión.', 'error'))
+                        .finally(() => restaurar(rei));
+                });
+        }
+    });
+})();
+</script>
 </body>
 </html>

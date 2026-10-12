@@ -30,7 +30,7 @@
     .modulo-header { flex-shrink: 0; background:#fff; border:1px solid #dfe2d8; border-radius:12px; padding:0.6rem 1.1rem; box-shadow:0 2px 10px rgba(52,55,52,.05); margin-bottom:0.85rem; }
     .modulo-contenido { flex-grow: 1; overflow: auto; min-height: 0; }
   </style>
-  <link rel="stylesheet" href="/css/lto.css">
+  <link rel="stylesheet" href="/css/lto.css?v=3">
 </head>
 <body>
 
@@ -48,9 +48,10 @@
           <select id="clienteSelect" class="form-select form-select-sm" style="min-width:240px;">
           <option value="" class="text-dark">Seleccione un Cliente</option>
           <option th:each="cliente : ${listaClientes}"
-                  th:value="${cliente.id}" th:text="${cliente.nombre}"
+                  th:value="${cliente.id}" th:text="${cliente.activo} ? ${cliente.nombre} : ${cliente.nombre} + ' (inactivo)'"
                   th:data-encargado="${cliente.encargado}" th:data-telefono="${cliente.telefono}" th:data-correo="${cliente.email}"
-                  th:data-promedio="${cliente.promedioGbBackup}" th:data-dias="${cliente.diasEntreBackups}" class="text-dark">          </option>
+                  th:data-promedio="${cliente.promedioGbBackup}" th:data-dias="${cliente.diasEntreBackups}"
+                  th:data-activo="${cliente.activo}" class="text-dark">          </option>
         </select>
           <input type="hidden" id="clienteCacheadoId" th:value="${clienteCacheado}">
           <button id="btnNuevoCliente" class="btn btn-primary btn-sm" title="Nuevo cliente"><i class="bi bi-plus-lg"></i></button>
@@ -265,6 +266,9 @@
         <button id="btnGuardarBd" class="btn btn-primary mt-4 w-100 fw-bold py-2 shadow-sm">
           <i class="bi bi-save"></i> Guardar datos
         </button>
+        <button type="button" id="btnEstadoCliente" class="btn btn-outline-danger mt-2 w-100 fw-bold py-2" style="display:none;">
+          <i class="bi bi-slash-circle"></i> Inhabilitar cliente
+        </button>
       </form>
     </div>
   </div>
@@ -343,7 +347,7 @@
 
               // Validación: Solo permite entrar sin cliente si vas a crear 'datos' nuevos
               if (clienteId === "" && operacion !== 'datos') {
-                  alert("Por favor, seleccione una Empresa / Cliente en el panel izquierdo primero.");
+                  LTO.toast('Seleccioná un cliente para continuar.', 'warning');
                   return;
               }
 
@@ -376,6 +380,36 @@
                         document.getElementById('formDatosDias').value = optSel.getAttribute('data-dias') || '';
                       }
 
+                      // --- Botón inhabilitar / habilitar cliente (baja lógica RF-05.4) ---
+                      const btnEstado = document.getElementById('btnEstadoCliente');
+                      if (btnEstado && clienteId !== "") {
+                          const optAct = clienteSelect.options[clienteSelect.selectedIndex];
+                          const activo = (optAct.getAttribute('data-activo') !== 'false');
+                          btnEstado.style.display = 'block';
+                          if (activo) {
+                              btnEstado.className = 'btn btn-outline-danger mt-2 w-100 fw-bold py-2';
+                              btnEstado.innerHTML = '<i class="bi bi-slash-circle"></i> Inhabilitar cliente';
+                          } else {
+                              btnEstado.className = 'btn btn-outline-success mt-2 w-100 fw-bold py-2';
+                              btnEstado.innerHTML = '<i class="bi bi-check-circle"></i> Habilitar cliente';
+                          }
+                          btnEstado.onclick = function() {
+                              const nuevoEstado = !activo;
+                              LTO.confirm(nuevoEstado ? 'El cliente volverá a estar habilitado para operar.' : 'El cliente quedará inhabilitado. Sus cintas y su historial se conservan.', { titulo: nuevoEstado ? 'Habilitar cliente' : 'Inhabilitar cliente', textoAceptar: nuevoEstado ? 'Habilitar' : 'Inhabilitar', peligro: !nuevoEstado }).then(function (ok) { if (!ok) return;
+                              const params = new URLSearchParams();
+                              params.append('id', clienteId);
+                              params.append('activo', nuevoEstado);
+                              fetch('/api/cliente-estado', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
+                                  .then(r => r.json())
+                                  .then(d => {
+                                      if (d.status === 'success') { LTO.toast('Estado del cliente actualizado.', 'success'); location.reload(); }
+                                      else { LTO.toast(d.mensaje || 'No se pudo cambiar el estado del cliente.', 'error'); }
+                                  })
+                                  .catch(() => LTO.toast('Error de conexión con el servidor.', 'error'));
+                              });
+                          };
+                      }
+
                       const btnGuardarBd = document.getElementById('btnGuardarBd');
                       if(btnGuardarBd) {
                           btnGuardarBd.addEventListener('click', function(e) {
@@ -398,10 +432,10 @@
                               .then(res => res.json())
                               .then(data => {
                                   if (data.status === 'success') {
-                                      alert('¡Datos guardados con éxito!');
+                                      LTO.toast('Datos del cliente guardados correctamente.', 'success');
                                       location.reload();
                                   } else {
-                                      alert('Error al guardar en la base de datos.');
+                                      LTO.toast('No se pudieron guardar los datos del cliente.', 'error');
                                   }
                               });
                           });
@@ -527,7 +561,7 @@
                               console.error("Error al generar PDF:", err);
                               this.innerHTML = textoOriginal;
                               this.disabled = false;
-                              alert("Hubo un problema al generar el PDF.");
+                              LTO.toast('No se pudo generar el PDF.', 'error');
                             });
                           });
                         }
@@ -627,7 +661,7 @@
                               btnExportarPdf.addEventListener('click', function() {
                                   const cantCintas = parseInt(contadorCintas.innerText);
                                   if (cantCintas === 0) {
-                                      alert("Seleccione al menos una cinta para generar el acta.");
+                                      LTO.toast('Seleccioná al menos una cinta para generar el acta.', 'warning');
                                       return;
                                   }
                                   const elementoAImprimir = document.getElementById('zonaActaImprimible');
@@ -649,10 +683,10 @@
                             const seleccionados = document.querySelectorAll('.check-retiro:checked');
                             const barcodes = Array.from(seleccionados).map(cb => cb.getAttribute('data-barcode'));
                             if (barcodes.length === 0) {
-                              alert('Seleccione al menos una cinta para retirar.');
+                              LTO.toast('Seleccioná al menos una cinta para retirar.', 'warning');
                               return;
                             }
-                            if (confirm(`¿Está seguro de que desea procesar el retiro de ${barcodes.length} cinta(s)?`)) {
+                            LTO.confirm(`Se procesará el retiro de ${barcodes.length} cinta(s). Quedarán en estado RETIRADO y se generará el acta en PDF.`, { titulo: 'Procesar retiro', textoAceptar: 'Procesar retiro', peligro: true }).then(function (ok) { if (!ok) return;
                               const clienteId = clienteSelect.value;
                               fetch('/api/comprobante-retiro?clienteId=' + clienteId, {
                                 method: 'POST',
@@ -669,11 +703,11 @@
                                         a.click();
                                         a.remove();
                                         window.URL.revokeObjectURL(url);
-                                        alert('¡Retiro procesado! Se descargó y guardó el comprobante.');
+                                        LTO.toast('El acta se descargó y quedó guardada en el historial de las cintas.', 'success', { titulo: 'Retiro procesado' });
                                         btnEntrar.click();
                                       })
-                                      .catch(err => alert('Ocurrió un error al procesar el retiro.'));
-                            }
+                                      .catch(err => LTO.toast('No se pudo procesar el retiro. Verificá tus permisos e intentá nuevamente.', 'error'));
+                            });
                           });
                         }
                       } // Fin Retiro

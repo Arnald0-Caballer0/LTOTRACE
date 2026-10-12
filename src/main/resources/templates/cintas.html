@@ -5,7 +5,7 @@
     <title>LTOTRACE · Cintas</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/css/lto.css">
+    <link rel="stylesheet" href="/css/lto.css?v=3">
 </head>
 <body>
 
@@ -27,6 +27,10 @@
         <div class="d-flex flex-wrap gap-2 mb-3">
             <input type="text" id="buscador" class="form-control form-control-sm" style="max-width:300px"
                    placeholder="Buscar barcode, cliente, Volume ID...">
+            <select id="filtroCliente" class="form-select form-select-sm" style="max-width:200px">
+                <option value="">Todo cliente</option>
+                <option th:each="cl : ${clientes}" th:value="${cl.nombre}" th:text="${cl.nombre}"></option>
+            </select>
             <select id="filtroTecnologia" class="form-select form-select-sm" style="max-width:170px">
                 <option value="">Toda tecnología</option>
                 <option value="LTO-6">LTO-6</option>
@@ -39,6 +43,17 @@
                 <option value="LIBRERIA">Librería</option>
                 <option value="ARMARIO">Armario</option>
                 <option value="RETIRADO">Retirado</option>
+            </select>
+            <select id="filtroEstado" class="form-select form-select-sm" style="max-width:190px">
+                <option value="">Todo estado</option>
+                <option value="VIRGEN">Virgen (sin Volume ID)</option>
+                <option value="RELACIONADA">Relacionada</option>
+            </select>
+            <select id="filtroDesgaste" class="form-select form-select-sm" style="max-width:170px">
+                <option value="">Todo desgaste</option>
+                <option value="SALUDABLE">Saludable</option>
+                <option value="ADVERTENCIA">Advertencia</option>
+                <option value="REEMPLAZAR">Reemplazar</option>
             </select>
         </div>
 
@@ -54,14 +69,16 @@
                         </tr>
                         </thead>
                         <tbody id="tbodyCintas">
-                        <tr th:each="c : ${cintas}" th:attr="data-tec=${c.tecnologia}, data-ubi=${c.ubicacion}">
+                        <tr th:each="c : ${cintas}" th:attr="data-tec=${c.tecnologia}, data-ubi=${c.ubicacion}, data-cliente=${c.cliente}, data-estado=${c.volumeId == 'PENDIENTE' ? 'VIRGEN' : 'RELACIONADA'}, data-desgaste=${c.usos >= 250 ? 'REEMPLAZAR' : (c.usos >= 175 ? 'ADVERTENCIA' : 'SALUDABLE')}">
                             <td class="fw-bold" th:text="${c.barcode}"></td>
                             <td><span th:text="${c.volumeId}"
                                       th:classappend="${c.volumeId == 'PENDIENTE'} ? 'text-danger fw-bold' : 'text-primary fw-bold'"></span></td>
                             <td th:text="${c.cliente}"></td>
                             <td><span class="badge bg-secondary" th:text="${c.tecnologia}"></span></td>
                             <td th:text="${c.ubicacion}"></td>
-                            <td th:text="${c.estado} ?: '-'"></td>
+                            <td><span class="badge"
+                                      th:classappend="${c.volumeId == 'PENDIENTE'} ? 'bg-warning text-dark' : 'bg-success'"
+                                      th:text="${c.volumeId == 'PENDIENTE'} ? 'Virgen' : 'Relacionada'"></span></td>
                             <td th:text="${c.usos}"></td>
                             <td th:text="${c.fechaPrimerUso}"></td>
                             <td th:text="${c.esSemanal} ? ${c.diaSemana} : '-'"></td>
@@ -218,19 +235,25 @@
         const buscador = document.getElementById('buscador');
         const fTec = document.getElementById('filtroTecnologia');
         const fUbi = document.getElementById('filtroUbicacion');
+        const fCliente = document.getElementById('filtroCliente');
+        const fEstado = document.getElementById('filtroEstado');
+        const fDesgaste = document.getElementById('filtroDesgaste');
         const aviso = document.getElementById('sinResultados');
 
         function norm(s) { return (s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
 
         function filtrar() {
             const q = buscador.value.toLowerCase().trim();
-            const tec = fTec.value, ubi = fUbi.value;
+            const tec = fTec.value, ubi = fUbi.value, cli = fCliente.value, est = fEstado.value, des = fDesgaste.value;
             let visibles = 0;
             rows.forEach(tr => {
                 const okTxt = tr.textContent.toLowerCase().includes(q);
                 const okTec = !tec || tr.getAttribute('data-tec') === tec;
                 const okUbi = !ubi || norm(tr.getAttribute('data-ubi')) === ubi;
-                const mostrar = okTxt && okTec && okUbi;
+                const okCli = !cli || tr.getAttribute('data-cliente') === cli;
+                const okEst = !est || tr.getAttribute('data-estado') === est;
+                const okDes = !des || tr.getAttribute('data-desgaste') === des;
+                const mostrar = okTxt && okTec && okUbi && okCli && okEst && okDes;
                 tr.style.display = mostrar ? '' : 'none';
                 if (mostrar) visibles++;
             });
@@ -239,6 +262,9 @@
         buscador.addEventListener('input', filtrar);
         fTec.addEventListener('change', filtrar);
         fUbi.addEventListener('change', filtrar);
+        fCliente.addEventListener('change', filtrar);
+        fEstado.addEventListener('change', filtrar);
+        fDesgaste.addEventListener('change', filtrar);
 
         // ---- Modales ----
         const modalCrear = new bootstrap.Modal(document.getElementById('modalCrear'));
@@ -285,8 +311,8 @@
         // ---- Crear individual ----
         document.getElementById('btnCrearIndividual').addEventListener('click', function () {
             const barcode = document.getElementById('crearBarcodeInd').value.trim();
-            if (!barcode) { alert('Ingresá el barcode de la cinta.'); return; }
-            if (!document.getElementById('crearCliente').value) { alert('Seleccioná un cliente.'); return; }
+            if (!barcode) { LTO.toast('Ingresá el barcode de la cinta.', 'warning'); return; }
+            if (!document.getElementById('crearCliente').value) { LTO.toast('Seleccioná un cliente.', 'warning'); return; }
             const params = new URLSearchParams();
             params.append('barcode', barcode);
             params.append('clienteId', document.getElementById('crearCliente').value);
@@ -297,17 +323,17 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.status === 'success') { mostrarExito(data.mensaje); }
-                    else { alert(data.mensaje || 'Error al crear.'); }
+                    else { LTO.toast(data.mensaje || 'No se pudo crear la cinta.', 'error'); }
                 })
-                .catch(() => alert('Error de conexión.'))
+                .catch(() => LTO.toast('Error de conexión con el servidor.', 'error'))
                 .finally(() => this.disabled = false);
         });
 
         // ---- Crear por lote ----
         document.getElementById('btnCrearLote').addEventListener('click', function () {
-            if (!document.getElementById('crearCliente').value) { alert('Seleccioná un cliente.'); return; }
+            if (!document.getElementById('crearCliente').value) { LTO.toast('Seleccioná un cliente.', 'warning'); return; }
             const plantilla = document.getElementById('crearPlantilla').value.trim();
-            if (!plantilla) { alert('Ingresá la plantilla del nombre.'); return; }
+            if (!plantilla) { LTO.toast('Ingresá la plantilla del nombre.', 'warning'); return; }
             const params = new URLSearchParams();
             params.append('clienteId', document.getElementById('crearCliente').value);
             params.append('tecnologia', document.getElementById('crearTec').value.trim());
@@ -319,12 +345,12 @@
             fetch('/api/crear-cintas', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.status !== 'success') { alert(data.mensaje || 'Error al crear.'); return; }
+                    if (data.status !== 'success') { LTO.toast(data.mensaje || 'No se pudo crear la cinta.', 'error'); return; }
                     let msg = 'Cintas creadas: ' + (data.creadas ? data.creadas.length : 0);
                     if (data.omitidas && data.omitidas.length) { msg += ' (omitidas: ' + data.omitidas.length + ')'; }
                     mostrarExito(msg);
                 })
-                .catch(() => alert('Error al crear las cintas.'))
+                .catch(() => LTO.toast('No se pudieron crear las cintas.', 'error'))
                 .finally(() => this.disabled = false);
         });
     });

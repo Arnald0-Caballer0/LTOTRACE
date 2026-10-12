@@ -28,6 +28,15 @@ public class ConciliacionService {
 
     public AuditoriaInventario ejecutar(String usuario) {
         Map<String, String> fisico = libraryService.obtenerInventarioFisico();
+
+        // Si no se pudo obtener el inventario físico (TS4300 no disponible),
+        // se aborta la auditoría en vez de marcar todo como "no localizado".
+        if (fisico == null) {
+            throw new IllegalStateException(
+                    "No se pudo conectar con la TS4300 para obtener el inventario físico. " +
+                    "Verifique la conexión e intente nuevamente.");
+        }
+
         List<Map<String, Object>> registradas = cintaDAO.listarTodasCompleto(null);
 
         AuditoriaInventario aud = new AuditoriaInventario();
@@ -35,7 +44,7 @@ public class ConciliacionService {
         aud.setUsuario(usuario);
 
         Set<String> barcodesRegistrados = new HashSet<>();
-        Set<String> conProblema = new HashSet<>();
+        Set<String> conProblema = new HashSet<>();   // medios DISTINTOS con al menos una inconsistencia
 
         // Conteo de Volume IDs para detectar duplicados
         Map<String, Integer> volIdCount = new HashMap<>();
@@ -81,19 +90,21 @@ public class ConciliacionService {
             }
         }
 
-        // Cintas físicas que no están registradas
+        // Cintas físicas que no están registradas (también son medios con inconsistencia)
         for (Map.Entry<String, String> e : fisico.entrySet()) {
             if (!barcodesRegistrados.contains(e.getKey())) {
                 aud.agregarDetalle(new AuditoriaInventarioDetalle(e.getKey(), "DESCONOCIDA",
                         "Cinta presente en la librería pero no registrada en el sistema.", "\u2014", e.getValue()));
+                conProblema.add(e.getKey());
             }
         }
 
+        // Totales coherentes: coincidencias + inconsistencias = analizadas
         Set<String> universo = new HashSet<>(barcodesRegistrados);
         universo.addAll(fisico.keySet());
         aud.setTotalAnalizadas(universo.size());
-        aud.setTotalInconsistencias(aud.getDetalles().size());
-        aud.setCoincidencias(barcodesRegistrados.size() - conProblema.size());
+        aud.setTotalInconsistencias(conProblema.size());              // medios distintos con problemas
+        aud.setCoincidencias(universo.size() - conProblema.size());   // medios sin ningún problema
 
         return auditoriaRepo.save(aud);
     }

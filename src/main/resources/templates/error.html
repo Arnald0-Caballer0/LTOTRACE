@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LTOTRACE · Error</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/css/lto.css?v=3">
+    <style>
+        body { min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Inter','Segoe UI',sans-serif; }
+        .caja-error { background: #fff; border: 1px solid var(--lto-borde); border-radius: 14px; box-shadow: 0 8px 32px rgba(20,33,61,.10); padding: 2.5rem 2.75rem; max-width: 520px; width: 100%; text-align: center; }
+        .codigo { font-size: 3.2rem; font-weight: 800; color: var(--lto-azul); line-height: 1; }
+        .icono { font-size: 2.6rem; color: var(--lto-azul); }
+    </style>
+</head>
+<body>
+<div class="caja-error"
+     th:with="st=${status != null ? status : 500},
+              titulo=${st == 404 ? 'Página no encontrada' : (st == 403 ? 'Acceso denegado' : (st == 400 ? 'Solicitud inválida' : 'Ocurrió un error inesperado'))},
+              detalle=${st == 404 ? 'La página que buscás no existe o fue movida.' : (st == 403 ? 'No tenés permisos para acceder a este recurso.' : (st == 400 ? 'Los datos enviados no son válidos. Revisalos e intentá nuevamente.' : 'El sistema no pudo completar la operación. Si el problema continúa, informalo al administrador.'))}">
+    <div class="brand-lto mb-3" style="font-size:1.4rem;">LTO<span class="accent">TRACE</span></div>
+    <i class="bi bi-exclamation-octagon icono"></i>
+    <div class="codigo mt-2" th:text="${st}">500</div>
+    <h4 class="fw-bold mt-2" th:text="${titulo}">Ocurrió un error inesperado</h4>
+    <p class="text-muted mb-4" th:text="${detalle}">El sistema no pudo completar la operación.</p>
+    <div class="d-flex gap-2 justify-content-center">
+        <a href="javascript:history.back()" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Volver</a>
+        <a href="/" class="btn btn-primary fw-bold"><i class="bi bi-house"></i> Ir al inicio</a>
+    </div>
+</div>
+</body>
+</html>

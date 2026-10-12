@@ -3,6 +3,7 @@
 <body>
 
 <nav class="lto-rail" th:fragment="rail(activo)">
+    <script src="/js/lto-ui.js?v=3"></script>
 
     <div class="lto-rail-top">
         <button type="button" class="lto-rail-toggle" id="ltoRailToggle" title="Expandir / Contraer">
@@ -35,19 +36,24 @@
             </div>
         </li>
 
-        <li th:classappend="${activo == 'usuarios'} ? 'activo'">
+        <!-- ===== Módulos solo para ADMIN ===== -->
+        <li th:if="${session.usuarioLogueado != null and session.usuarioLogueado.admin}"
+            th:classappend="${activo == 'usuarios'} ? 'activo'">
             <a href="/usuarios"><i class="bi bi-person-gear"></i><span class="lto-rail-label">Usuarios</span></a>
         </li>
 
-        <li th:classappend="${activo == 'auditoria'} ? 'activo'">
+        <li th:if="${session.usuarioLogueado != null and session.usuarioLogueado.admin}"
+            th:classappend="${activo == 'auditoria'} ? 'activo'">
             <a href="/auditoria"><i class="bi bi-journal-text"></i><span class="lto-rail-label">Auditoría</span></a>
         </li>
 
-        <li th:classappend="${activo == 'conciliacion'} ? 'activo'">
+        <li th:if="${session.usuarioLogueado != null and session.usuarioLogueado.admin}"
+            th:classappend="${activo == 'conciliacion'} ? 'activo'">
             <a href="/auditoria-inventario"><i class="bi bi-clipboard-check"></i><span class="lto-rail-label">Conciliación</span></a>
         </li>
 
-        <li class="tiene-sub" th:classappend="${activo == 'configuracion'} ? 'activo'">
+        <li class="tiene-sub" th:if="${session.usuarioLogueado != null and session.usuarioLogueado.admin}"
+            th:classappend="${activo == 'configuracion'} ? 'activo'">
             <a href="/configuracion/tecnologias"><i class="bi bi-gear"></i><span class="lto-rail-label">Configuración</span></a>
             <div class="lto-flyout">
                 <div class="lto-flyout-title">Configuración</div>
@@ -58,6 +64,13 @@
     </ul>
 
     <div class="lto-rail-bottom">
+        <div class="lto-rail-user" th:if="${session.usuarioLogueado != null}">
+            <i class="bi bi-person-circle"></i>
+            <div class="lto-rail-label lto-user-info">
+                <span class="lto-user-nombre" th:text="${session.usuarioLogueado.nombreCompleto} ?: ${session.usuarioLogueado.username}">Usuario</span>
+                <span class="lto-user-rol" th:text="${session.usuarioLogueado.rolNombre}">Rol</span>
+            </div>
+        </div>
         <a href="/logout"><i class="bi bi-box-arrow-right"></i><span class="lto-rail-label">Cerrar sesión</span></a>
     </div>
 
@@ -77,17 +90,6 @@
                     localStorage.setItem('ltoRailExpanded', document.body.classList.contains('rail-expanded') ? '1' : '0');
                 });
             }
-
-            // 2) Mensajes de éxito que se cierran solos a los 4 segundos
-            window.addEventListener('DOMContentLoaded', function () {
-                document.querySelectorAll('.alert-success').forEach(function (el) {
-                    setTimeout(function () {
-                        el.style.transition = 'opacity .5s';
-                        el.style.opacity = '0';
-                        setTimeout(function () { el.style.display = 'none'; }, 500);
-                    }, 4000);
-                });
-            });
         })();
     </script>
 </nav>

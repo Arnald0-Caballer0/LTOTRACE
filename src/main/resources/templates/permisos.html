@@ -1,17 +1,119 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>LTOTRACE · Permisos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="/css/lto.css">
+    <link rel="stylesheet" href="/css/lto.css?v=3">
     <style>
-        body, html { height:100%; overflow:auto; font-family:'Inter','Segoe UI',sans-serif; }
-        .modulo-wrapper { padding:1.25rem 1.5rem; max-width:1000px; }
-        .cfg-card { background:#fff; border:1px solid var(--lto-borde); border-radius:12px; box-shadow:0 2px 12px rgba(52,55,52,.05); }
-        .cfg-card-header { padding:.85rem 1.25rem; border-bottom:1px solid var(--lto-borde); font-weight:700; display:flex; align-items:center; gap:8px; }
-        .lista-clientes { max-height:260px; overflow:auto; border:1px solid var(--lto-borde); border-radius:8px; padding:.5rem 1rem; }
+        :root {
+            --p-tinta: #343734; --p-suave: #6b706a; --p-borde: #dfe2d8; --p-fondo: #f6f7f2;
+            --p-azul: #70a1bd; --p-azul-osc: #4f7f9c; --p-verde: #2e9e5b; --p-rojo: #b5473a;
+        }
+        body, html { height: 100%; overflow: auto; font-family: 'Inter', 'Segoe UI', sans-serif; color: var(--p-tinta); }
+        .perm-wrap { max-width: 780px; margin: 0 auto; padding: 1.5rem 1.5rem 0; }
+
+        /* ---------- Encabezado ---------- */
+        .perm-volver { display: inline-flex; align-items: center; gap: 6px; color: var(--p-suave); text-decoration: none; font-size: .88rem; margin-bottom: .9rem; }
+        .perm-volver:hover { color: var(--p-tinta); }
+        .perm-titulo { font-size: 1.55rem; font-weight: 700; margin: 0 0 1.1rem; letter-spacing: -.01em; }
+        .perm-identidad { display: flex; align-items: center; gap: 14px; margin-bottom: 1.8rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--p-borde); }
+        .perm-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--p-tinta); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 1.05rem; flex: none; }
+        .perm-nombre { font-weight: 700; font-size: 1.08rem; line-height: 1.2; }
+        .perm-sub { color: var(--p-suave); font-size: .88rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .perm-estado { display: inline-flex; align-items: center; gap: 5px; font-size: .8rem; font-weight: 600; }
+        .perm-estado::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        .perm-estado.activo { color: var(--p-verde); }
+        .perm-estado.inactivo { color: var(--p-rojo); }
+
+        .perm-seccion { margin-bottom: 2rem; }
+        .perm-seccion h2 { font-size: 1.02rem; font-weight: 700; margin: 0 0 .25rem; }
+        .perm-seccion .perm-ayuda { color: var(--p-suave); font-size: .86rem; margin: 0 0 .85rem; }
+
+        /* ---------- Rol ---------- */
+        .rol-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .rol-opcion { position: relative; display: flex; gap: 12px; padding: 14px 16px; border: 1.5px solid var(--p-borde); border-radius: 12px; background: #fff; cursor: pointer; transition: border-color .15s, background .15s; margin: 0; }
+        .rol-opcion input { position: absolute; opacity: 0; pointer-events: none; }
+        .rol-opcion i { font-size: 1.45rem; color: var(--p-suave); line-height: 1; margin-top: 2px; }
+        .rol-opcion strong { display: block; font-size: .95rem; }
+        .rol-opcion span { display: block; font-size: .82rem; color: var(--p-suave); margin-top: 2px; line-height: 1.35; }
+        .rol-opcion:has(input:checked) { border-color: var(--p-azul); background: #f2f7fa; }
+        .rol-opcion:has(input:checked) i { color: var(--p-azul-osc); }
+        .rol-opcion:has(input:focus-visible) { outline: 3px solid rgba(112,161,189,.45); outline-offset: 2px; }
+
+        /* ---------- Bloques que el rol Administrador anula ---------- */
+        .anulable { transition: opacity .2s; }
+        .es-admin .anulable { opacity: .42; pointer-events: none; user-select: none; }
+        .aviso-admin { display: none; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: #f2f7fa; border: 1px solid #d3e3ec; color: var(--p-azul-osc); font-size: .87rem; margin-bottom: 1.6rem; }
+        .es-admin .aviso-admin { display: flex; }
+
+        /* ---------- Capacidades ---------- */
+        .cap-panel { background: #fff; border: 1px solid var(--p-borde); border-radius: 12px; overflow: hidden; }
+        .cap-fila { display: flex; align-items: center; gap: 14px; padding: 14px 16px; cursor: pointer; margin: 0; }
+        .cap-fila + .cap-fila { border-top: 1px solid var(--p-borde); }
+        .cap-icono { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--p-fondo); color: var(--p-suave); font-size: 1.1rem; flex: none; transition: background .15s, color .15s; }
+        .cap-texto { flex: 1; min-width: 0; }
+        .cap-texto strong { display: block; font-size: .93rem; }
+        .cap-texto span { display: block; font-size: .82rem; color: var(--p-suave); line-height: 1.35; }
+        .cap-fila:has(input:checked) .cap-icono { background: #e6f0f5; color: var(--p-azul-osc); }
+
+        /* Interruptor propio */
+        .interruptor { position: relative; width: 46px; height: 26px; flex: none; }
+        .interruptor input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+        .interruptor .pista { position: absolute; inset: 0; border-radius: 13px; background: #cfd3c9; transition: background .18s; }
+        .interruptor .pista::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .18s; }
+        .interruptor input:checked + .pista { background: var(--p-azul); }
+        .interruptor input:checked + .pista::after { transform: translateX(20px); }
+        .interruptor input:focus-visible + .pista { outline: 3px solid rgba(112,161,189,.45); outline-offset: 2px; }
+
+        /* ---------- Alcance ---------- */
+        .segmentado { display: inline-flex; padding: 4px; border-radius: 11px; background: #e9ebe3; margin-bottom: .9rem; }
+        .segmentado label { position: relative; padding: 7px 16px; border-radius: 8px; font-size: .87rem; font-weight: 600; color: var(--p-suave); cursor: pointer; transition: background .15s, color .15s; margin: 0; }
+        .segmentado input { position: absolute; opacity: 0; pointer-events: none; }
+        .segmentado label:has(input:checked) { background: #fff; color: var(--p-tinta); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .segmentado label:has(input:focus-visible) { outline: 3px solid rgba(112,161,189,.45); }
+        .alcance-nota { font-size: .86rem; color: var(--p-suave); display: flex; gap: 8px; align-items: center; }
+        .alcance-nota[hidden] { display: none; }
+
+        .zona-clientes { background: #fff; border: 1px solid var(--p-borde); border-radius: 12px; padding: 14px; }
+        .zona-clientes[hidden] { display: none; }
+        .clientes-barra { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+        .clientes-buscar { position: relative; flex: 1; min-width: 200px; }
+        .clientes-buscar i { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--p-suave); pointer-events: none; }
+        .clientes-buscar input { width: 100%; padding: 7px 12px 7px 32px; border: 1px solid var(--p-borde); border-radius: 9px; font-size: .88rem; }
+        .clientes-buscar input:focus { outline: none; border-color: var(--p-azul); box-shadow: 0 0 0 3px rgba(112,161,189,.2); }
+        .clientes-contador { font-size: .84rem; color: var(--p-suave); white-space: nowrap; }
+        .clientes-acciones { display: flex; gap: 14px; }
+        .enlace-accion { background: none; border: none; padding: 0; font-size: .84rem; color: var(--p-azul-osc); font-weight: 600; cursor: pointer; white-space: nowrap; }
+        .enlace-accion:hover { text-decoration: underline; }
+        .enlace-accion:focus-visible { outline: 2px solid var(--p-azul); outline-offset: 2px; border-radius: 3px; }
+        .fichas { display: flex; flex-wrap: wrap; gap: 8px; max-height: 280px; overflow: auto; padding: 2px; }
+        .ficha { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border: 1.5px solid var(--p-borde); border-radius: 999px; font-size: .86rem; cursor: pointer; background: #fff; transition: border-color .12s, background .12s; margin: 0; }
+        .ficha[hidden] { display: none; }
+        .ficha input { position: absolute; opacity: 0; pointer-events: none; }
+        .ficha .inicial { width: 24px; height: 24px; border-radius: 50%; background: var(--p-fondo); color: var(--p-suave); display: grid; place-items: center; font-size: .72rem; font-weight: 700; transition: background .12s, color .12s; }
+        .ficha:has(input:checked) { border-color: var(--p-azul); background: #f2f7fa; }
+        .ficha:has(input:checked) .inicial { background: var(--p-azul); color: #fff; }
+        .ficha:has(input:focus-visible) { outline: 3px solid rgba(112,161,189,.45); }
+        .ficha .inactivo { font-size: .74rem; color: var(--p-rojo); }
+        .fichas-vacio { color: var(--p-suave); font-size: .86rem; padding: 6px 2px; }
+        .fichas-vacio[hidden] { display: none; }
+        .alerta-alcance { display: flex; gap: 8px; align-items: center; font-size: .85rem; color: #8a6a10; background: #fbf5e3; border: 1px solid #efe2b6; border-radius: 9px; padding: 8px 12px; margin-top: 12px; }
+        .alerta-alcance[hidden] { display: none; }
+
+        /* ---------- Barra de guardado ---------- */
+        .perm-acciones { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0 18px; margin-top: .5rem; background: linear-gradient(to bottom, rgba(239,241,232,0), #eff1e8 30%); }
+        .estado-cambios { font-size: .85rem; color: var(--p-suave); display: flex; align-items: center; gap: 7px; }
+        .estado-cambios.sucio { color: #9a6b00; font-weight: 600; }
+        .estado-cambios.sucio::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #d4a017; }
+        .btn-guardar { padding: 10px 22px; border: none; border-radius: 10px; background: var(--p-tinta); color: #fff; font-weight: 700; font-size: .92rem; transition: background .15s; }
+        .btn-guardar:hover { background: #1f221f; }
+        .btn-guardar:focus-visible { outline: 3px solid rgba(112,161,189,.55); outline-offset: 2px; }
+
+        @media (max-width: 560px) { .rol-opciones { grid-template-columns: 1fr; } .perm-wrap { padding: 1rem 1rem 0; } }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
     </style>
 </head>
 <body>
@@ -19,98 +121,202 @@
 <div th:replace="~{fragments/barra :: rail('usuarios')}"></div>
 
 <div class="app-content">
-    <div class="modulo-wrapper">
+<div class="perm-wrap">
 
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <a href="/usuarios" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
-            <h4 class="fw-bold m-0"><i class="bi bi-shield-lock"></i> Permisos de <span th:text="${usuario.username}"></span></h4>
+    <a href="/usuarios" class="perm-volver" id="lnkVolver"><i class="bi bi-arrow-left"></i> Usuarios</a>
+    <h1 class="perm-titulo">Permisos de acceso</h1>
+
+    <div class="perm-identidad"
+         th:with="nom=${usuario.nombreCompleto != null and !#strings.isEmpty(usuario.nombreCompleto) ? usuario.nombreCompleto : usuario.username}"
+         th:attr="data-nombre=${nom}">
+        <div class="perm-avatar" id="avatar" aria-hidden="true"></div>
+        <div>
+            <div class="perm-nombre" th:text="${nom}">Nombre</div>
+            <div class="perm-sub">
+                <span th:text="'@' + ${usuario.username}">@usuario</span>
+                <span class="perm-estado" th:classappend="${usuario.activo} ? 'activo' : 'inactivo'"
+                      th:text="${usuario.activo} ? 'Activo' : 'Inactivo'">Activo</span>
+            </div>
         </div>
-        <p class="text-muted small mb-4">El administrador siempre tiene acceso total; estos permisos aplican a operadores.</p>
-
-        <div th:if="${param.ok != null}" class="alert alert-success py-2">Permisos guardados correctamente.</div>
-
-        <form th:action="@{'/usuarios/' + ${usuario.id} + '/permisos'}" method="post">
-
-            <div class="row g-4">
-                <!-- Rol y capacidades -->
-                <div class="col-lg-5">
-                    <div class="cfg-card mb-4">
-                        <div class="cfg-card-header"><i class="bi bi-person-badge text-primary"></i> Rol</div>
-                        <div class="p-3">
-                            <select name="rol" class="form-select">
-                                <option value="OPERADOR" th:selected="${usuario.rolCodigo == 'OPERADOR'}">Operador</option>
-                                <option value="ADMIN" th:selected="${usuario.rolCodigo == 'ADMIN'}">Administrador</option>
-                            </select>
-                            <div class="form-text small">Un administrador ignora las restricciones de abajo.</div>
-                        </div>
-                    </div>
-
-                    <div class="cfg-card">
-                        <div class="cfg-card-header"><i class="bi bi-sliders text-primary"></i> Capacidades</div>
-                        <div class="p-3">
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="puedeMover" id="pMover" th:checked="${usuario.puedeMoverCintas}">
-                                <label class="form-check-label" for="pMover">Mover cintas (robot)</label>
-                            </div>
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" name="puedeCrear" id="pCrear" th:checked="${usuario.puedeCrearCintas}">
-                                <label class="form-check-label" for="pCrear">Crear cintas</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="puedeRetirar" id="pRetirar" th:checked="${usuario.puedeRetirarCintas}">
-                                <label class="form-check-label" for="pRetirar">Retirar cintas</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Alcance de clientes -->
-                <div class="col-lg-7">
-                    <div class="cfg-card h-100">
-                        <div class="cfg-card-header"><i class="bi bi-people text-primary"></i> Alcance de clientes</div>
-                        <div class="p-3">
-                            <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" name="veTodos" id="veTodos" th:checked="${usuario.veTodosClientes}">
-                                <label class="form-check-label fw-bold" for="veTodos">Ve todos los clientes</label>
-                            </div>
-
-                            <div id="zonaClientes">
-                                <p class="text-muted small mb-2">O seleccioná los clientes que puede ver:</p>
-                                <div class="lista-clientes">
-                                    <div class="form-check" th:each="c : ${clientes}">
-                                        <input class="form-check-input chk-cliente" type="checkbox" name="clientes"
-                                               th:value="${c.id}" th:id="'cli' + ${c.id}"
-                                               th:checked="${asignados.contains(c.id)}">
-                                        <label class="form-check-label" th:for="'cli' + ${c.id}" th:text="${c.nombre}"></label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-end my-4">
-                <button type="submit" class="btn btn-primary fw-bold px-4"><i class="bi bi-check-lg"></i> Guardar permisos</button>
-            </div>
-        </form>
-
     </div>
+
+    <form id="formPermisos" th:action="@{'/usuarios/' + ${usuario.id} + '/permisos'}" method="post">
+
+        <section class="perm-seccion">
+            <h2>Rol</h2>
+            <p class="perm-ayuda">Define el nivel de acceso general del usuario.</p>
+            <div class="rol-opciones">
+                <label class="rol-opcion">
+                    <input type="radio" name="rol" value="OPERADOR" th:checked="${usuario.rolCodigo != 'ADMIN'}">
+                    <i class="bi bi-person-gear"></i>
+                    <div><strong>Operador</strong><span>Opera cintas y clientes dentro de los permisos que definas abajo.</span></div>
+                </label>
+                <label class="rol-opcion">
+                    <input type="radio" name="rol" value="ADMIN" th:checked="${usuario.rolCodigo == 'ADMIN'}">
+                    <i class="bi bi-shield-check"></i>
+                    <div><strong>Administrador</strong><span>Acceso total: usuarios, configuración, auditoría y conciliación.</span></div>
+                </label>
+            </div>
+        </section>
+
+        <div class="aviso-admin" role="note">
+            <i class="bi bi-info-circle-fill"></i>
+            <span>Un administrador tiene acceso total, así que las capacidades y el alcance de abajo no se le aplican. Se conservan por si vuelve a ser operador.</span>
+        </div>
+
+        <section class="perm-seccion anulable">
+            <h2>Capacidades</h2>
+            <p class="perm-ayuda">Operaciones sobre las cintas que el usuario puede realizar.</p>
+            <div class="cap-panel">
+                <label class="cap-fila">
+                    <span class="cap-icono"><i class="bi bi-robot"></i></span>
+                    <span class="cap-texto"><strong>Mover cintas con el robot</strong><span>Cargar cintas en el drive y liberarlo desde el dashboard.</span></span>
+                    <span class="interruptor"><input type="checkbox" name="puedeMover" th:checked="${usuario.puedeMoverCintas}" aria-label="Mover cintas con el robot"><span class="pista"></span></span>
+                </label>
+                <label class="cap-fila">
+                    <span class="cap-icono"><i class="bi bi-plus-square"></i></span>
+                    <span class="cap-texto"><strong>Crear cintas</strong><span>Registrar cintas nuevas, individualmente o por lote.</span></span>
+                    <span class="interruptor"><input type="checkbox" name="puedeCrear" th:checked="${usuario.puedeCrearCintas}" aria-label="Crear cintas"><span class="pista"></span></span>
+                </label>
+                <label class="cap-fila">
+                    <span class="cap-icono"><i class="bi bi-box-arrow-right"></i></span>
+                    <span class="cap-texto"><strong>Retirar cintas</strong><span>Procesar retiros y generar el acta en PDF.</span></span>
+                    <span class="interruptor"><input type="checkbox" name="puedeRetirar" th:checked="${usuario.puedeRetirarCintas}" aria-label="Retirar cintas"><span class="pista"></span></span>
+                </label>
+            </div>
+        </section>
+
+        <section class="perm-seccion anulable">
+            <h2>Alcance de clientes</h2>
+            <p class="perm-ayuda">Clientes cuyas cintas puede ver y operar.</p>
+            <div class="segmentado" role="radiogroup" aria-label="Alcance de clientes">
+                <label><input type="radio" name="veTodos" value="true" th:checked="${usuario.veTodosClientes == null or usuario.veTodosClientes}"> Todos los clientes</label>
+                <label><input type="radio" name="veTodos" value="false" th:checked="${usuario.veTodosClientes != null and !usuario.veTodosClientes}"> Clientes específicos</label>
+            </div>
+
+            <p class="alcance-nota" id="notaTodos">
+                <i class="bi bi-globe2"></i>
+                <span>Puede ver y operar las cintas de todos los clientes, incluidos los que se registren en el futuro.</span>
+            </p>
+
+            <div class="zona-clientes" id="zonaClientes">
+                <div class="clientes-barra">
+                    <div class="clientes-buscar">
+                        <i class="bi bi-search"></i>
+                        <input type="search" id="buscarCliente" placeholder="Buscar cliente" aria-label="Buscar cliente" autocomplete="off">
+                    </div>
+                    <span class="clientes-contador" id="contador" aria-live="polite">0 de 0 seleccionados</span>
+                    <div class="clientes-acciones">
+                        <button type="button" class="enlace-accion" id="btnTodos">Seleccionar todos</button>
+                        <button type="button" class="enlace-accion" id="btnNinguno">Quitar todos</button>
+                    </div>
+                </div>
+                <div class="fichas" id="fichas">
+                    <label class="ficha" th:each="c : ${clientes}" th:attr="data-nombre=${c.nombre}">
+                        <input type="checkbox" name="clientes" class="chk-cliente" th:value="${c.id}" th:checked="${asignados.contains(c.id)}">
+                        <span class="inicial" th:text="${#strings.isEmpty(c.nombre) ? '?' : #strings.toUpperCase(#strings.substring(c.nombre,0,1))}">A</span>
+                        <span th:text="${c.nombre}">Cliente</span>
+                        <span class="inactivo" th:if="${c.activo == false}">(inactivo)</span>
+                    </label>
+                </div>
+                <div class="fichas-vacio" id="sinResultados" hidden>Ningún cliente coincide con la búsqueda.</div>
+                <div class="fichas-vacio" id="sinClientes" th:if="${#lists.isEmpty(clientes)}">Todavía no hay clientes registrados.</div>
+                <div class="alerta-alcance" id="alertaAlcance" hidden>
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span>No tiene clientes asignados: no verá ninguna cinta hasta que le asignes al menos uno.</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="perm-acciones">
+            <span class="estado-cambios" id="estadoCambios">Sin cambios</span>
+            <button type="submit" class="btn-guardar"><i class="bi bi-check-lg"></i> Guardar permisos</button>
+        </div>
+    </form>
+
+</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Si "ve todos" está marcado, deshabilita la lista de clientes
-    document.addEventListener('DOMContentLoaded', function () {
-        const veTodos = document.getElementById('veTodos');
-        const zona = document.getElementById('zonaClientes');
-        function actualizar() {
-            zona.style.opacity = veTodos.checked ? '.4' : '1';
-            document.querySelectorAll('.chk-cliente').forEach(c => c.disabled = veTodos.checked);
+(function () {
+    const form = document.getElementById('formPermisos');
+    const chkClientes = Array.from(form.querySelectorAll('.chk-cliente'));
+    const fichas = Array.from(document.querySelectorAll('#fichas .ficha'));
+    const buscar = document.getElementById('buscarCliente');
+    const btnTodos = document.getElementById('btnTodos');
+    const btnNinguno = document.getElementById('btnNinguno');
+
+    // Iniciales del usuario
+    const nombre = (document.querySelector('.perm-identidad').dataset.nombre || '').trim();
+    const partes = nombre.split(/\s+/).filter(Boolean);
+    document.getElementById('avatar').textContent =
+        (partes.length > 1 ? partes[0][0] + partes[partes.length - 1][0] : nombre.slice(0, 2)).toUpperCase();
+
+    // Texto sin tildes ni mayúsculas, para que "lactea" encuentre "Láctea"
+    const normalizar = t => (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    fichas.forEach(f => { f.dataset.busqueda = normalizar(f.dataset.nombre); });
+
+    const rol = () => (form.querySelector('input[name="rol"]:checked') || {}).value || 'OPERADOR';
+    const veTodos = () => (form.querySelector('input[name="veTodos"]:checked') || {}).value !== 'false';
+    const estado = () => new URLSearchParams(new FormData(form)).toString();
+    let estadoInicial = null;
+
+    function filtrar() {
+        const q = normalizar(buscar.value);
+        let visibles = 0;
+        fichas.forEach(f => { const ver = !q || f.dataset.busqueda.includes(q); f.hidden = !ver; if (ver) visibles++; });
+        document.getElementById('sinResultados').hidden = !(q && visibles === 0);
+        // Con un filtro activo, las acciones masivas afectan solo a los clientes visibles: el texto lo aclara
+        btnTodos.textContent = q ? 'Seleccionar visibles (' + visibles + ')' : 'Seleccionar todos';
+        btnNinguno.textContent = q ? 'Quitar visibles' : 'Quitar todos';
+        btnTodos.disabled = btnNinguno.disabled = (visibles === 0);
+    }
+
+    function actualizar() {
+        form.classList.toggle('es-admin', rol() === 'ADMIN');
+
+        const todos = veTodos();
+        document.getElementById('zonaClientes').hidden = todos;
+        document.getElementById('notaTodos').hidden = !todos;
+
+        const n = chkClientes.filter(c => c.checked).length;
+        document.getElementById('contador').textContent = n + ' de ' + chkClientes.length + ' seleccionados';
+        document.getElementById('alertaAlcance').hidden = todos || n > 0 || chkClientes.length === 0;
+
+        if (estadoInicial !== null) {
+            const sucio = estado() !== estadoInicial;
+            const ec = document.getElementById('estadoCambios');
+            ec.classList.toggle('sucio', sucio);
+            ec.textContent = sucio ? 'Cambios sin guardar' : 'Sin cambios';
         }
-        veTodos.addEventListener('change', actualizar);
-        actualizar();
+    }
+
+    buscar.addEventListener('input', filtrar);
+    buscar.addEventListener('keydown', e => {
+        if (e.key === 'Enter') e.preventDefault();                       // no enviar el formulario al buscar
+        if (e.key === 'Escape') { buscar.value = ''; filtrar(); }        // Esc limpia la búsqueda
     });
+    const marcarVisibles = v => { fichas.forEach(f => { if (!f.hidden) f.querySelector('input').checked = v; }); actualizar(); };
+    btnTodos.addEventListener('click', () => marcarVisibles(true));
+    btnNinguno.addEventListener('click', () => marcarVisibles(false));
+
+    form.addEventListener('change', e => { if (e.target !== buscar) actualizar(); });
+
+    // Avisar si se sale con cambios sin guardar
+    document.getElementById('lnkVolver').addEventListener('click', function (e) {
+        if (estado() === estadoInicial) return;
+        e.preventDefault();
+        const destino = this.href;
+        LTO.confirm('Hay cambios sin guardar en los permisos de este usuario. Si salís ahora, se perderán.',
+                    { titulo: 'Salir sin guardar', textoAceptar: 'Salir sin guardar', peligro: true })
+            .then(ok => { if (ok) window.location.href = destino; });
+    });
+
+    estadoInicial = estado();
+    filtrar();
+    actualizar();
+})();
 </script>
 </body>
 </html>

@@ -1,24 +1,41 @@
 package com.arnaldo.tesis;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
+/**
+ * Provee conexiones JDBC reutilizando el pool de conexiones configurado por
+ * Spring Boot (spring.datasource.* en application.properties). De este modo las
+ * credenciales NO están embebidas en el código fuente y se evita duplicar la
+ * configuración de la base de datos.
+ *
+ * Como el DAO usa esta clase de forma estática, se emplea un "puente": Spring
+ * inyecta el DataSource una vez al arrancar y se guarda en una referencia estática.
+ */
+@Component
 public class DatabaseConnection {
-    // Configuración de la base de datos PostgreSQL
-    private static final String URL = "jdbc:postgresql://localhost:5432/atopa";
-    private static final String USER = "postgres";
-    private static final String PASSWORD = "***ELIMINADO***";
+
+    private static DataSource dataSource;
+
+    @Autowired
+    public void setDataSource(DataSource ds) {
+        DatabaseConnection.dataSource = ds;
+    }
 
     public static Connection getConnection() {
-        Connection connection = null;
         try {
-            // Intentamos establecer la conexión
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("Conexión exitosa a PostgreSQL (Base de datos: atopa)");
+            if (dataSource == null) {
+                System.err.println("DataSource aún no disponible.");
+                return null;
+            }
+            return dataSource.getConnection();
         } catch (SQLException e) {
-            System.err.println("Error al conectar a la base de datos: " + e.getMessage());
+            System.err.println("Error al obtener conexión del pool: " + e.getMessage());
+            return null;
         }
-        return connection;
     }
 }

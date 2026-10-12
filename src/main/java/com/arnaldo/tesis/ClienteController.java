@@ -22,10 +22,16 @@ public class ClienteController {
     private ClienteDAO clienteDAO;
     @Autowired
     private PermisoService permisoService;
+    @Autowired
+    private AuditoriaService auditoria;
 
     // Este es el método que carga tu pantalla del 30/70
     @GetMapping("/clientes")
-    public String moduloClientes(Model model, HttpSession session) {
+    public String moduloClientes(@org.springframework.web.bind.annotation.RequestParam(value = "op", required = false) String op,
+                                 Model model, HttpSession session) {
+        if ("retiro".equals(op) && !permisoService.puedeRetirar(session)) {
+            return "redirect:/clientes?op=inventario&denegado";
+        }
         java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
         model.addAttribute("listaClientes", permisoService.filtrarClientes(clienteDAO.findAll(), permitidos));
         model.addAttribute("puedeRetirar", permisoService.puedeRetirar(session));
@@ -48,17 +54,6 @@ public class ClienteController {
         return cintaDAO.filtrarPorCliente(clienteId);
     }
     // Esta API recibe la lista de barcodes desde JavaScript y llama a tu DAO
-    @PostMapping("/api/retirar-cintas")
-    @ResponseBody
-    public String procesarRetiro(@RequestBody List<String> barcodes) {
-        try {
-            cintaDAO.retirarCintas(barcodes);
-            // Devolvemos un JSON simple confirmando el éxito
-            return "{\"status\":\"success\"}";
-        } catch (Exception e) {
-            return "{\"status\":\"error\"}";
-        }
-    }
 
     // API para crear o actualizar un cliente
     @PostMapping("/api/guardar-cliente")
@@ -132,4 +127,28 @@ public class ClienteController {
         }
         return "{\"status\":\"ok\"}";
     }
+
+    @PostMapping("/api/cliente-estado")
+    @ResponseBody
+    public String cambiarEstadoCliente(
+            @org.springframework.web.bind.annotation.RequestParam("id") Long id,
+            @org.springframework.web.bind.annotation.RequestParam("activo") boolean activo,
+            HttpSession session) {
+        Usuario u = permisoService.usuarioActual(session);
+        if (u == null || !u.isAdmin()) {
+            return "{\"status\":\"error\",\"mensaje\":\"Solo un administrador puede inhabilitar clientes.\"}";
+        }
+        try {
+            Cliente c = clienteDAO.findById(id).orElse(null);
+            if (c == null) return "{\"status\":\"error\",\"mensaje\":\"Cliente no encontrado.\"}";
+            c.setActivo(activo);
+            clienteDAO.save(c);
+            auditoria.registrar(activo ? "CLIENTE_HABILITADO" : "CLIENTE_INHABILITADO",
+                    "Cliente " + c.getNombre() + (activo ? " habilitado" : " inhabilitado"));
+            return "{\"status\":\"success\"}";
+        } catch (Exception e) {
+            return "{\"status\":\"error\"}";
+        }
+    }
+
 }

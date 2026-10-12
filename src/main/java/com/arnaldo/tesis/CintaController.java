@@ -26,6 +26,8 @@ public class CintaController {
     private LibraryService libraryService;
     @Autowired
     private PermisoService permisoService;
+    @Autowired
+    private ConfiguracionService cfg;
 
 
     @GetMapping("/")
@@ -65,22 +67,76 @@ public class CintaController {
         return "redirect:/";
     }
 
-    @GetMapping("/relacionar/{barcode}")
-    public String relacionarCinta(@PathVariable(name = "barcode") String barcode) {
-        AS400 system = IbmIConnection.getSystem();
-        TapeService tapeService = new TapeService();
-        String volumeIdEncontrado = tapeService.obtenerVolumeIdDesdeIbmI(system, "TAP07");
-
-        if (volumeIdEncontrado != null) {
-            cintaDAO.actualizarVolumeId(barcode, volumeIdEncontrado);
+    // ==========================================================
+    // RELACIONAR / REINICIAR VOLUME ID (sin recargar la pantalla)
+    // ==========================================================
+    @PostMapping("/api/relacionar/{barcode}")
+    @ResponseBody
+    public Map<String, Object> relacionarCinta(@PathVariable("barcode") String barcode, HttpSession session) {
+        Map<String, Object> r = new HashMap<>();
+        if (!puedeOperarCinta(session, barcode)) {
+            return error(r, "No tenés permisos sobre la cinta " + barcode + ".");
         }
-        return "redirect:/";
+
+        // 1) Verificar en la librería que la cinta montada en el drive sea la que se quiere relacionar.
+        //    Sin este control, el Volume ID de otra cinta podría quedar asignado a esta.
+        String enDrive = libraryService.consultarCintaEnDrive1();
+        if (enDrive == null || "ERROR_AUTH".equals(enDrive) || "SIN_DATOS".equals(enDrive)) {
+            return error(r, "No se pudo consultar la librería TS4300 para verificar qué cinta está montada en el drive.");
+        }
+        if ("VACÍO".equals(enDrive) || enDrive.isBlank()) {
+            return error(r, "No hay ninguna cinta en el drive. Montá la cinta " + barcode + " antes de relacionar su Volume ID.");
+        }
+        if (!enDrive.trim().equalsIgnoreCase(barcode.trim())) {
+            return error(r, "En el drive está montada la cinta " + enDrive.trim() + ", no la " + barcode
+                    + ". Montá la cinta correcta antes de relacionar su Volume ID.");
+        }
+
+        // 2) Leer el Volume ID desde el IBM i (CHKTAP) en el dispositivo configurado
+        AS400 system = IbmIConnection.getSystem();
+        if (system == null) {
+            return error(r, "La conexión con el servidor IBM i no está configurada.");
+        }
+        String dispositivo = cfg.get("ibmi.dispositivo");
+        if (dispositivo == null || dispositivo.isBlank()) dispositivo = "TAP07";
+        String volumeId = new TapeService().obtenerVolumeIdDesdeIbmI(system, dispositivo.trim());
+        if (volumeId == null) {
+            return error(r, "El IBM i no devolvió el Volume ID en el dispositivo " + dispositivo.trim()
+                    + ". Verificá que la cinta esté lista en el dispositivo y que el servidor esté disponible.");
+        }
+
+        cintaDAO.actualizarVolumeId(barcode, volumeId);
+        r.put("status", "success");
+        r.put("volumeId", volumeId);
+        r.put("mensaje", "Volume ID " + volumeId + " relacionado correctamente con la cinta " + barcode + ".");
+        return r;
     }
 
-    @GetMapping("/reiniciar/{barcode}")
-    public String reiniciarCinta(@PathVariable(name = "barcode") String barcode) {
+    @PostMapping("/api/reiniciar/{barcode}")
+    @ResponseBody
+    public Map<String, Object> reiniciarCinta(@PathVariable("barcode") String barcode, HttpSession session) {
+        Map<String, Object> r = new HashMap<>();
+        if (!puedeOperarCinta(session, barcode)) {
+            return error(r, "No tenés permisos sobre la cinta " + barcode + ".");
+        }
         cintaDAO.reiniciarCinta(barcode);
-        return "redirect:/";
+        r.put("status", "success");
+        r.put("mensaje", "El Volume ID de la cinta " + barcode + " volvió al estado PENDIENTE.");
+        return r;
+    }
+
+    /** La cinta debe pertenecer a un cliente dentro del alcance del usuario (el ADMIN ve todas). */
+    private boolean puedeOperarCinta(HttpSession session, String barcode) {
+        java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
+        if (permitidos == null) return true;
+        return cintaDAO.filtrarCintas(null, null, permitidos).stream()
+                .anyMatch(c -> c.getBarcode() != null && c.getBarcode().equalsIgnoreCase(barcode));
+    }
+
+    private Map<String, Object> error(Map<String, Object> r, String mensaje) {
+        r.put("status", "error");
+        r.put("mensaje", mensaje);
+        return r;
     }
 
     // Modifica tu método de marcar para que reciba el día
@@ -129,6 +185,11 @@ public class CintaController {
         if (!permisoService.puedeMover(session)) {
             respuesta.put("status", "error");
             respuesta.put("mensaje", "No tenés permiso para mover cintas.");
+            return respuesta;
+        }
+        if (!puedeOperarCinta(session, barcode)) {
+            respuesta.put("status", "error");
+            respuesta.put("mensaje", "No tenés permisos sobre la cinta " + barcode + ".");
             return respuesta;
         }
 
@@ -190,7 +251,11 @@ public class CintaController {
     }
 
     @GetMapping("/cintas")
-    public String cintas(org.springframework.ui.Model model, HttpSession session) {
+    public String cintas(@RequestParam(value = "crear", required = false) String crear,
+                         org.springframework.ui.Model model, HttpSession session) {
+        if (crear != null && !permisoService.puedeCrear(session)) {
+            return "redirect:/cintas?denegado";
+        }
         java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
         model.addAttribute("cintas", cintaDAO.listarTodasCompleto(permitidos));
         model.addAttribute("clientes", permisoService.filtrarClientes(clienteDAO.findAll(), permitidos));
