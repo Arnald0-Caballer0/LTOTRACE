@@ -105,7 +105,16 @@ public class CintaController {
                     + ". Verificá que la cinta esté lista en el dispositivo y que el servidor esté disponible.");
         }
 
-        cintaDAO.actualizarVolumeId(barcode, volumeId);
+        // 3) El Volume ID no puede estar vinculado a otra cinta (además lo impide un índice único en la BD)
+        String otraCinta = cintaDAO.buscarCintaConVolumeId(volumeId, barcode);
+        if (otraCinta != null) {
+            return error(r, "El Volume ID " + volumeId + " ya está vinculado a la cinta " + otraCinta
+                    + ". Reiniciá el Volume ID de esa cinta antes de relacionarlo con la " + barcode + ".");
+        }
+
+        if (!cintaDAO.actualizarVolumeId(barcode, volumeId)) {
+            return error(r, "No se pudo registrar el Volume ID de la cinta " + barcode + ". No se realizaron cambios.");
+        }
         r.put("status", "success");
         r.put("volumeId", volumeId);
         r.put("mensaje", "Volume ID " + volumeId + " relacionado correctamente con la cinta " + barcode + ".");

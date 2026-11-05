@@ -72,15 +72,45 @@ public class ClienteController {
     // API para cambiar el estado de la cinta al instante
     @PostMapping("/api/actualizar-ubicacion")
     @ResponseBody
-    public String actualizarUbicacionCinta(
+    public java.util.Map<String, Object> actualizarUbicacionCinta(
             @org.springframework.web.bind.annotation.RequestParam("barcode") String barcode,
-            @org.springframework.web.bind.annotation.RequestParam("ubicacion") String ubicacion) {
-        try {
-            cintaDAO.actualizarUbicacion(barcode, ubicacion);
-            return "{\"status\":\"success\"}";
-        } catch (Exception e) {
-            return "{\"status\":\"error\"}";
+            @org.springframework.web.bind.annotation.RequestParam("ubicacion") String ubicacion,
+            HttpSession session) {
+        java.util.Map<String, Object> r = new java.util.HashMap<>();
+        // 1) Capacidad: reubicar medios requiere el permiso de mover cintas
+        if (!permisoService.puedeMover(session)) {
+            return errorJson(r, "Acceso denegado: no tenés permiso para mover cintas.");
         }
+        // 2) Catálogo: solo ubicaciones operativas. RETIRADO se asigna únicamente mediante
+        //    el proceso de retiro, que genera el acta en PDF
+        String destino = (ubicacion != null) ? ubicacion.trim().toUpperCase() : "";
+        if (!UBICACIONES_OPERATIVAS.contains(destino)) {
+            return errorJson(r, "RETIRADO".equals(destino)
+                    ? "Para retirar una cinta usá la opción Retiro de cintas, que genera el acta."
+                    : "Ubicación no válida.");
+        }
+        // 3) Alcance: la cinta debe pertenecer a un cliente visible para el usuario
+        java.util.Set<Long> permitidos = permisoService.clientesPermitidos(session);
+        if (permitidos != null && cintaDAO.filtrarCintas(null, null, permitidos).stream()
+                .noneMatch(c -> c.getBarcode() != null && c.getBarcode().equalsIgnoreCase(barcode))) {
+            return errorJson(r, "Acceso denegado: la cinta no pertenece a un cliente asignado.");
+        }
+        try {
+            cintaDAO.actualizarUbicacion(barcode, destino);
+            r.put("status", "success");
+            return r;
+        } catch (Exception e) {
+            return errorJson(r, "No se pudo actualizar la ubicación.");
+        }
+    }
+
+    /** Ubicaciones que pueden asignarse manualmente desde el inventario. */
+    private static final java.util.Set<String> UBICACIONES_OPERATIVAS = java.util.Set.of("ARMARIO", "LIBRERIA");
+
+    private java.util.Map<String, Object> errorJson(java.util.Map<String, Object> r, String mensaje) {
+        r.put("status", "error");
+        r.put("mensaje", mensaje);
+        return r;
     }
 
     @Autowired

@@ -19,14 +19,23 @@ public class Cinta {
     @Transient
     private static final int VIDA_UTIL_MONTAJES = 250;
 
+    // Las longitudes coinciden con el script SQL y el diccionario de datos
     @Id
+    @Column(length = 50)
     private String barcode;
 
-    @Column(name = "volume_id")
+    @Column(name = "volume_id", length = 20)
     private String volumeId;
 
+    @Column(length = 50)
     private String ubicacion;
+
+    // Estado derivado (PENDIENTE / VINCULADA / RETIRADA): se calcula en las consultas
+    // a partir del Volume ID y la ubicación, por lo que no se almacena en la tabla.
+    @Transient
     private String estado;
+
+    @Column(length = 20)
     private String tecnologia;
 
     @ManyToOne
@@ -36,7 +45,7 @@ public class Cinta {
     @Transient
     private String nombreCliente;
 
-    @Column(name = "dia_semana")
+    @Column(name = "dia_semana", length = 20)
     private String diaSemana;
 
     @UpdateTimestamp

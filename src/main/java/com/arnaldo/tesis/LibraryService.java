@@ -125,8 +125,8 @@ public class LibraryService {
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         try {
-            ResponseEntity<JsonNode> response = restTemplate.exchange(url, HttpMethod.GET, entity, JsonNode.class);
-            JsonNode root = response.getBody();
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            JsonNode root = (response.getBody() != null) ? new ObjectMapper().readTree(response.getBody()) : null;
 
             if (root != null && root.has("BaseStatus")) {
                 return root.get("BaseStatus").get("RobStatus").asText();
@@ -249,8 +249,7 @@ public class LibraryService {
                 // Devolvemos qué acción fue: SUCCESS_LOAD (uso) o SUCCESS_UNLOAD (descarga)
                 return "SUCCESS_" + accion;
             } else {
-                return "Error inesperado del robot al intentar mover la cinta. Código HTTP: " + responseMove.getStatusCodeValue();
-            }
+                return "Error inesperado del robot al intentar mover la cinta. Código HTTP: " + responseMove.getStatusCode().value();            }
 
         } catch (Exception e) {
             e.printStackTrace();

@@ -62,6 +62,10 @@ public class UsuarioController {
         if (user.isEmpty() || password == null || password.isBlank()) {
             return "redirect:/usuarios?error=datos";
         }
+        // Política mínima de contraseñas (longitud, letras y números, distinta del usuario)
+        if (!PoliticaContrasena.cumple(password, user)) {
+            return "redirect:/usuarios?error=password";
+        }
 
         // El username no puede repetirse (ni siquiera con usuarios desactivados)
         boolean yaExiste = usuarioRepository.findAll().stream()
@@ -78,6 +82,11 @@ public class UsuarioController {
         nuevo.setRol(rolRepository.findByCodigo(codigoRol).orElse(null));
         nuevo.setActivo(true);
         nuevo.setFechaCreacion(LocalDateTime.now());
+        // Mínimo privilegio: sin capacidades operativas ni clientes hasta que el administrador los asigne
+        nuevo.setVeTodosClientes(false);
+        nuevo.setPuedeMoverCintas(false);
+        nuevo.setPuedeCrearCintas(false);
+        nuevo.setPuedeRetirarCintas(false);
         usuarioRepository.save(nuevo);
         auditoria.registrar("USUARIO_CREADO", "Usuario creado: " + nuevo.getUsername() + " (" + nuevo.getRolCodigo() + ")");
 
@@ -117,6 +126,9 @@ public class UsuarioController {
         Optional<Usuario> opt = usuarioRepository.findById(id);
         if (opt.isPresent()) {
             Usuario u = opt.get();
+            if (!PoliticaContrasena.cumple(password, u.getUsername())) {
+                return "redirect:/usuarios?error=password";
+            }
             u.setPasswordHash(authService.hashear(password));
             usuarioRepository.save(u);
             auditoria.registrar("USUARIO_PASSWORD", "Contraseña restablecida: " + u.getUsername());

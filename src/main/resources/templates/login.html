@@ -74,6 +74,11 @@
                 Tu sesión expiró por inactividad. Iniciá sesión nuevamente.
             </div>
 
+            <!-- Aviso de cuenta desactivada durante una sesión abierta -->
+            <div th:if="${param.deshabilitado}" class="alert alert-danger py-2 small" role="alert">
+                Tu cuenta fue desactivada. Contactá a un administrador.
+            </div>
+
             <!-- Aviso de cierre de sesión -->
             <div th:if="${param.logout}" class="alert alert-success py-2 small" role="alert">
                 Sesión cerrada correctamente.

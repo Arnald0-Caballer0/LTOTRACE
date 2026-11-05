@@ -16,6 +16,8 @@ public class Cliente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Las longitudes coinciden con el script SQL y el diccionario de datos
+    @Column(length = 100)
     private String nombre;
     private String encargado;
     private String telefono;

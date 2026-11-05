@@ -474,7 +474,7 @@
                                       <select class="form-select form-select-sm select-ubicacion fw-bold border-secondary shadow-sm" data-barcode="${c.barcode}" style="width: 120px; font-size: 0.8rem;">
                                           <option value="LIBRERIA" ${c.ubicacion === 'LIBRERIA' ? 'selected' : ''}>Librería</option>
                                           <option value="ARMARIO" ${c.ubicacion === 'ARMARIO' ? 'selected' : ''}>Armario</option>
-                                          <option value="RETIRADO" ${c.ubicacion === 'RETIRADO' ? 'selected' : ''}>Retirado</option>
+                                          ${c.ubicacion === 'RETIRADO' ? '<option value="RETIRADO" selected disabled>Retirado</option>' : ''}
                                       </select>
                                   </td>
                               `;
@@ -591,8 +591,15 @@
                                           disp[1].innerText = a;
                                           disp[2].innerText = v;
                                         }
+                                        LTO.toast('Ubicación actualizada.', 'success');
+                                      } else {
+                                        // Rechazado por el servidor: se restaura la ubicación anterior
+                                        const cintaAnt = cintas.find(c => c.barcode === barcode);
+                                        if (cintaAnt) this.value = cintaAnt.ubicacion;
+                                        LTO.toast(data.mensaje || 'No se pudo actualizar la ubicación.', 'error');
                                       }
-                                    });
+                                    })
+                                    .catch(() => LTO.toast('No se pudo actualizar la ubicación.', 'error'));
                           });
                         });
                       }

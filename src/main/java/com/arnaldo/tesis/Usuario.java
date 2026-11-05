@@ -37,17 +37,19 @@ public class Usuario {
     private LocalDateTime fechaCreacion;
 
     // --- Permisos ---
+    // Principio de mínimo privilegio: un usuario nuevo no tiene capacidades operativas
+    // ni clientes asignados hasta que un administrador se los otorgue (el ADMIN no depende de estos campos).
     @Column(name = "ve_todos_clientes")
-    private Boolean veTodosClientes = true;
+    private Boolean veTodosClientes = false;
 
     @Column(name = "puede_mover_cintas")
-    private Boolean puedeMoverCintas = true;
+    private Boolean puedeMoverCintas = false;
 
     @Column(name = "puede_crear_cintas")
-    private Boolean puedeCrearCintas = true;
+    private Boolean puedeCrearCintas = false;
 
     @Column(name = "puede_retirar_cintas")
-    private Boolean puedeRetirarCintas = true;
+    private Boolean puedeRetirarCintas = false;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "usuario_cliente",

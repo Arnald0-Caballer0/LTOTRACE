@@ -156,7 +156,27 @@ public class CintaDAO {
     // ==========================================================
     // 2. El "Matching": Actualiza el Volume ID obtenido del IBM i (CHKTAP)
     // ==========================================================
-    public void actualizarVolumeId(String barcode, String volumeId) {
+    /**
+     * Devuelve el barcode de otra cinta que ya tenga asignado ese Volume ID, o null si está libre.
+     * Se usa para no vincular un mismo Volume ID a dos cintas distintas.
+     */
+    public String buscarCintaConVolumeId(String volumeId, String excluirBarcode) {
+        String sql = "SELECT barcode FROM cintas WHERE volume_id = ? AND barcode <> ? LIMIT 1";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, volumeId);
+            pstmt.setString(2, excluirBarcode);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next() ? rs.getString("barcode") : null;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al verificar el Volume ID: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /** @return true si la cinta se actualizó y el movimiento quedó registrado. */
+    public boolean actualizarVolumeId(String barcode, String volumeId) {
         String sql = "UPDATE cintas SET volume_id = ?, ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode = ?";
         Connection conn = null;
         try {
@@ -174,13 +194,17 @@ public class CintaDAO {
                 registrarMovimiento(conn, barcode, "RELACION", "Volume ID relacionado: " + volumeId, null);
                 conn.commit();
                 System.out.println("PostgreSQL actualizado: " + barcode + " -> " + volumeId);
+                return true;
             } else {
                 rollback(conn);
                 System.err.println("No se encontró el barcode: " + barcode);
+                return false;
             }
         } catch (SQLException e) {
+            // Incluye el rechazo del índice único de Volume ID (dos cintas con el mismo identificador)
             rollback(conn);
             System.err.println("Error al actualizar en Postgres: " + e.getMessage());
+            return false;
         } finally {
             cerrar(conn);
         }
@@ -197,7 +221,7 @@ public class CintaDAO {
     public List<Cinta> filtrarCintas(Integer clienteId, String tecnologia, java.util.Set<Long> permitidos) {
         List<Cinta> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
-                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, " +
+                "SELECT c.barcode, c.volume_id, c.ubicacion, CASE WHEN c.ubicacion = 'RETIRADO' THEN 'RETIRADA' WHEN c.volume_id IS NULL OR c.volume_id = 'PENDIENTE' THEN 'PENDIENTE' ELSE 'VINCULADA' END AS estado, c.tecnologia, cl.nombre as cliente, " +
                         "c.contador_usos, c.es_llenable, cl.promedio_gb_backup, cl.dias_entre_backups, " +
                         "COALESCE(t.capacidad_gb, 0) AS capacidad_gb " +
                         "FROM cintas c " +
@@ -255,7 +279,7 @@ public class CintaDAO {
 
     public List<Cinta> listarTodas() {
         List<Cinta> lista = new ArrayList<>();
-        String sql = "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
+        String sql = "SELECT c.barcode, c.volume_id, c.ubicacion, CASE WHEN c.ubicacion = 'RETIRADO' THEN 'RETIRADA' WHEN c.volume_id IS NULL OR c.volume_id = 'PENDIENTE' THEN 'PENDIENTE' ELSE 'VINCULADA' END AS estado, c.tecnologia, cl.nombre as cliente " +
                 "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -277,7 +301,7 @@ public class CintaDAO {
 
     public List<Cinta> filtrarPorCliente(int clienteId) {
         List<Cinta> lista = new ArrayList<>();
-        String sql = "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
+        String sql = "SELECT c.barcode, c.volume_id, c.ubicacion, CASE WHEN c.ubicacion = 'RETIRADO' THEN 'RETIRADA' WHEN c.volume_id IS NULL OR c.volume_id = 'PENDIENTE' THEN 'PENDIENTE' ELSE 'VINCULADA' END AS estado, c.tecnologia, cl.nombre as cliente " +
                 "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE c.cliente_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -333,7 +357,7 @@ public class CintaDAO {
     public List<Cinta> listarRecientes(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
-                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
+                "SELECT c.barcode, c.volume_id, c.ubicacion, CASE WHEN c.ubicacion = 'RETIRADO' THEN 'RETIRADA' WHEN c.volume_id IS NULL OR c.volume_id = 'PENDIENTE' THEN 'PENDIENTE' ELSE 'VINCULADA' END AS estado, c.tecnologia, cl.nombre as cliente " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE 1=1 "
         );
 
@@ -443,7 +467,7 @@ public class CintaDAO {
     public List<Cinta> listarSemanalesManual(Integer clienteId, String tecnologia) {
         List<Cinta> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
-                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente, c.dia_semana " +
+                "SELECT c.barcode, c.volume_id, c.ubicacion, CASE WHEN c.ubicacion = 'RETIRADO' THEN 'RETIRADA' WHEN c.volume_id IS NULL OR c.volume_id = 'PENDIENTE' THEN 'PENDIENTE' ELSE 'VINCULADA' END AS estado, c.tecnologia, cl.nombre as cliente, c.dia_semana " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE c.es_semanal = TRUE"
         );
 
@@ -555,7 +579,7 @@ public class CintaDAO {
         if (barcodes == null || barcodes.isEmpty()) return lista;
 
         StringBuilder sql = new StringBuilder(
-                "SELECT c.barcode, c.volume_id, c.ubicacion, c.estado, c.tecnologia, cl.nombre as cliente " +
+                "SELECT c.barcode, c.volume_id, c.ubicacion, CASE WHEN c.ubicacion = 'RETIRADO' THEN 'RETIRADA' WHEN c.volume_id IS NULL OR c.volume_id = 'PENDIENTE' THEN 'PENDIENTE' ELSE 'VINCULADA' END AS estado, c.tecnologia, cl.nombre as cliente " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE c.barcode IN (");
         for (int i = 0; i < barcodes.size(); i++) {
             sql.append("?");
@@ -607,7 +631,7 @@ public class CintaDAO {
     public List<java.util.Map<String, Object>> listarTodasCompleto(java.util.Set<Long> permitidos) {
         List<java.util.Map<String, Object>> lista = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
-                "SELECT c.barcode, c.volume_id, c.tecnologia, c.ubicacion, c.estado, " +
+                "SELECT c.barcode, c.volume_id, c.tecnologia, c.ubicacion, CASE WHEN c.ubicacion = 'RETIRADO' THEN 'RETIRADA' WHEN c.volume_id IS NULL OR c.volume_id = 'PENDIENTE' THEN 'PENDIENTE' ELSE 'VINCULADA' END AS estado, " +
                         "c.contador_usos, c.fecha_primer_uso, c.es_semanal, c.dia_semana, " +
                         "c.ultima_modificacion, cl.nombre AS cliente " +
                         "FROM cintas c LEFT JOIN clientes cl ON c.cliente_id = cl.id WHERE 1=1");
