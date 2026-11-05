@@ -17,7 +17,7 @@ public class ConfiguracionService {
     @Autowired
     private ConfiguracionRepository repo;
 
-    @Value("${lto.crypto.password:CAMBIAR-esta-clave-en-produccion}")
+    @Value("${lto.crypto.password}")
     private String cryptoPassword;
 
     @Value("${lto.crypto.salt:0458349c980526e7}")

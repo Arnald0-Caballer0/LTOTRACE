@@ -37,3 +37,11 @@ build/
 
 ### Mac OS ###
 .DS_Store
+ ### Credenciales y certificados (no versionar) ###
+       *.p12
+       *.jks
+       *.env
+       *.pem
+       *.key
+       application-local.properties
+       reemplazos*.txt
