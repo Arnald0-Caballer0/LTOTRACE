@@ -50,8 +50,8 @@
                 <option value="RELACIONADA">Relacionada</option>
             </select>
             <select id="filtroDesgaste" class="form-select form-select-sm" style="max-width:170px">
-                <option value="">Todo desgaste</option>
-                <option value="SALUDABLE">Saludable</option>
+                <option value="">Todo nivel de uso</option>
+                <option value="SALUDABLE">Normal</option>
                 <option value="ADVERTENCIA">Advertencia</option>
                 <option value="REEMPLAZAR">Reemplazar</option>
             </select>
@@ -69,7 +69,7 @@
                         </tr>
                         </thead>
                         <tbody id="tbodyCintas">
-                        <tr th:each="c : ${cintas}" th:attr="data-tec=${c.tecnologia}, data-ubi=${c.ubicacion}, data-cliente=${c.cliente}, data-estado=${c.volumeId == 'PENDIENTE' ? 'VIRGEN' : 'RELACIONADA'}, data-desgaste=${c.usos >= 250 ? 'REEMPLAZAR' : (c.usos >= 175 ? 'ADVERTENCIA' : 'SALUDABLE')}">
+                        <tr th:each="c : ${cintas}" th:attr="data-tec=${c.tecnologia}, data-ubi=${c.ubicacion}, data-cliente=${c.cliente}, data-estado=${c.volumeId == 'PENDIENTE' ? 'VIRGEN' : 'RELACIONADA'}, data-desgaste=${c.nivelUso}">
                             <td class="fw-bold" th:text="${c.barcode}"></td>
                             <td><span th:text="${c.volumeId}"
                                       th:classappend="${c.volumeId == 'PENDIENTE'} ? 'text-danger fw-bold' : 'text-primary fw-bold'"></span></td>

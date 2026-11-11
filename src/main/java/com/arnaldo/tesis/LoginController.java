@@ -38,6 +38,9 @@ public class LoginController {
 
         switch (r.getEstado()) {
             case EXITO:
+                // Cambia el identificador de la sesión al autenticarse (evita la fijación de sesión);
+                // se conservan los atributos, incluido el token CSRF
+                if (request.getSession(false) != null) request.changeSessionId();
                 HttpSession session = request.getSession(true);
                 session.setAttribute(SESSION_USER, r.getUsuario());
                 auditoria.registrar(r.getUsuario().getUsername(), "LOGIN", "Inicio de sesión exitoso", ip);

@@ -3,7 +3,10 @@
 <body>
 
 <nav class="lto-rail" th:fragment="rail(activo)">
-    <script src="/js/lto-ui.js?v=3"></script>
+    <!-- Token CSRF de la sesión: lto-ui.js lo agrega a las llamadas fetch y a los formularios POST -->
+    <span id="lto-csrf" hidden th:if="${_csrf != null}"
+          th:attr="data-token=${_csrf.token},data-header=${_csrf.headerName},data-param=${_csrf.parameterName}"></span>
+    <script src="/js/lto-ui.js?v=4"></script>
 
     <div class="lto-rail-top">
         <button type="button" class="lto-rail-toggle" id="ltoRailToggle" title="Expandir / Contraer">

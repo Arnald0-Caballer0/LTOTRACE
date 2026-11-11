@@ -10,7 +10,12 @@ public class TapeService {
     /** Identificador del mensaje que IBM i devuelve cuando CHKTAP encuentra un volumen. */
     public static final String MSG_VOLUMEN_ENCONTRADO = "CPC6778";
 
-    /** Longitud del Volume ID en los datos de sustitución del mensaje (&1 de CPC6778). */
+    /**
+     * Formato de los datos de sustitución de CPC6778 ("Volume &2 found on device &1."):
+     * &1 = dispositivo, CHAR(10), posiciones 1 a 10; &2 = volumen, CHAR(6), posiciones 11 a 16.
+     * Es el mismo formato que se usa en CL con %SST(&MSGDTA 11 6).
+     */
+    private static final int LONGITUD_DISPOSITIVO = 10;
     private static final int LONGITUD_VOLUME_ID = 6;
 
     /** CCSID por defecto (EBCDIC) si no se puede obtener el del sistema. */
@@ -30,7 +35,7 @@ public class TapeService {
                 AS400Message[] messageList = command.getMessageList();
                 for (AS400Message msg : messageList) {
                     if (MSG_VOLUMEN_ENCONTRADO.equals(msg.getID())) {
-                        // 1) Fuente principal: los datos de sustitución del mensaje (campo &1),
+                        // 1) Fuente principal: los datos de sustitución del mensaje (campo &2),
                         //    independientes del idioma del texto
                         volumeId = volumeIdDesdeSustitucion(msg.getSubstitutionData(), ccsidDe(system));
                         // 2) Respaldo: el texto del mensaje, por si los datos no estuvieran disponibles
@@ -64,14 +69,15 @@ public class TapeService {
 
     /**
      * Obtiene el Volume ID a partir de los datos de sustitución del mensaje CPC6778
-     * ("Volume &1 found on device &2."), donde &1 es el identificador del volumen
-     * (6 caracteres EBCDIC). Devuelve null si los datos no están disponibles.
+     * ("Volume &2 found on device &1."): &1 es el dispositivo (10 caracteres) y &2 el
+     * identificador del volumen (6 caracteres EBCDIC, desde la posición 11).
+     * Devuelve null si los datos no están disponibles o están incompletos.
      * (Método aislado para poder probarlo sin conexión al IBM i.)
      */
     public static String volumeIdDesdeSustitucion(byte[] datos, int ccsid) {
-        if (datos == null || datos.length < LONGITUD_VOLUME_ID) return null;
+        if (datos == null || datos.length < LONGITUD_DISPOSITIVO + LONGITUD_VOLUME_ID) return null;
         try {
-            Object valor = new AS400Text(LONGITUD_VOLUME_ID, ccsid).toObject(datos, 0);
+            Object valor = new AS400Text(LONGITUD_VOLUME_ID, ccsid).toObject(datos, LONGITUD_DISPOSITIVO);
             String volumen = (valor != null) ? valor.toString().trim() : "";
             return volumen.isEmpty() ? null : volumen;
         } catch (Exception e) {

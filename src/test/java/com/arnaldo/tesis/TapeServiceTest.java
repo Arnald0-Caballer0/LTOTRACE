@@ -53,15 +53,15 @@ class TapeServiceTest {
     @Test
     @DisplayName("Obtiene el Volume ID desde los datos de sustitución, sin depender del idioma")
     void sustitucion_devuelveVolumeId() {
-        // &1 = volumen (6 caracteres) y &2 = dispositivo (10 caracteres), en EBCDIC CCSID 37
-        byte[] datos = new AS400Text(16, 37).toBytes("TAP002TAP07     ");
+        // &1 = dispositivo (10 caracteres) y &2 = volumen (6 caracteres), en EBCDIC CCSID 37
+        byte[] datos = new AS400Text(16, 37).toBytes("TAP07     TAP002");
         assertThat(TapeService.volumeIdDesdeSustitucion(datos, 37)).isEqualTo("TAP002");
     }
 
     @Test
     @DisplayName("Quita los espacios de relleno de un Volume ID corto")
     void sustitucion_quitaRelleno() {
-        byte[] datos = new AS400Text(16, 37).toBytes("A1    TAP07     ");
+        byte[] datos = new AS400Text(16, 37).toBytes("TAP07     A1    ");
         assertThat(TapeService.volumeIdDesdeSustitucion(datos, 37)).isEqualTo("A1");
     }
 
@@ -70,5 +70,19 @@ class TapeServiceTest {
     void sustitucion_sinDatos_devuelveNull() {
         assertThat(TapeService.volumeIdDesdeSustitucion(null, 37)).isNull();
         assertThat(TapeService.volumeIdDesdeSustitucion(new byte[2], 37)).isNull();
+    }
+
+    @Test
+    @DisplayName("No confunde el nombre del dispositivo con el Volume ID")
+    void sustitucion_noDevuelveDispositivo() {
+        byte[] datos = new AS400Text(16, 37).toBytes("TAP07     CIER21");
+        assertThat(TapeService.volumeIdDesdeSustitucion(datos, 37)).isEqualTo("CIER21");
+    }
+
+    @Test
+    @DisplayName("Devuelve null si los datos solo traen el dispositivo")
+    void sustitucion_soloDispositivo_devuelveNull() {
+        byte[] datos = new AS400Text(10, 37).toBytes("TAP07     ");
+        assertThat(TapeService.volumeIdDesdeSustitucion(datos, 37)).isNull();
     }
 }

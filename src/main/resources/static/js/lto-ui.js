@@ -104,15 +104,48 @@
   }, true);
 
 
-  /* Sesión expirada durante una acción: avisar y volver al login (en lugar de "Error de conexión") */
+  /* ---------- Protección CSRF (Spring Security) ----------
+     El token de la sesión se publica en <span id="lto-csrf"> (fragments/barra.html).
+     Se agrega a toda llamada fetch que modifica datos y a los formularios POST. */
+  function datosCsrf() {
+    var el = document.getElementById('lto-csrf');
+    if (!el || !el.getAttribute('data-token')) return null;
+    return { token: el.getAttribute('data-token'), header: el.getAttribute('data-header'), param: el.getAttribute('data-param') };
+  }
+  function conCsrf(input, init) {
+    var metodo = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    if (/^(GET|HEAD|OPTIONS|TRACE)$/.test(metodo)) return init;
+    var url = (typeof input === 'string') ? input : (input && input.url) || '';
+    try { if (new URL(url, location.href).origin !== location.origin) return init; } catch (e) { return init; }
+    var c = datosCsrf(); if (!c) return init;
+    var copia = {}; for (var k in (init || {})) copia[k] = init[k];
+    var h = new Headers((init && init.headers) || (input && input.headers) || {});
+    if (!h.has(c.header)) h.set(c.header, c.token);
+    copia.headers = h;
+    return copia;
+  }
+  function csrfEnFormularios() {
+    var c = datosCsrf(); if (!c) return;
+    document.querySelectorAll('form').forEach(function (f) {
+      if ((f.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+      if (f.querySelector('input[name="' + c.param + '"]')) return;
+      var i = document.createElement('input'); i.type = 'hidden'; i.name = c.param; i.value = c.token; f.appendChild(i);
+    });
+  }
+
+  /* Sesión expirada durante una acción: avisar y volver al login (en lugar de "Error de conexión").
+     Token CSRF rechazado (403 con X-LTO-Motivo: csrf): avisar que hay que recargar la página. */
   var fetchOriginal = window.fetch;
   if (fetchOriginal) {
-    window.fetch = function () {
-      return fetchOriginal.apply(this, arguments).then(function (resp) {
+    window.fetch = function (input, init) {
+      return fetchOriginal.call(this, input, conCsrf(input, init)).then(function (resp) {
         if (resp.status === 401) {
           toast('Tu sesión expiró. Te redirigimos al inicio de sesión.', 'warning', { titulo: 'Sesión expirada' });
           setTimeout(function () { window.location.href = '/login?expirada'; }, 2200);
           return new Promise(function () {});
+        }
+        if (resp.status === 403 && resp.headers.get('X-LTO-Motivo') === 'csrf') {
+          toast('La solicitud no pudo validarse. Recargá la página e intentá nuevamente.', 'error', { titulo: 'Solicitud rechazada' });
         }
         return resp;
       });
@@ -169,6 +202,7 @@
   }
 
   function alCargar() {
+    csrfEnFormularios();
     try {
       var pend = JSON.parse(sessionStorage.getItem(CLAVE) || '[]'); sessionStorage.removeItem(CLAVE);
       pend.forEach(function (a) { toast(a.mensaje, a.tipo, { titulo: a.titulo }); });

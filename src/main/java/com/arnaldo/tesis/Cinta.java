@@ -16,8 +16,38 @@ import java.time.format.DateTimeFormatter;
 @Table(name = "cintas")
 public class Cinta {
 
-    @Transient
-    private static final int VIDA_UTIL_MONTAJES = 250;
+    /**
+     * Vida nominal de los cartuchos en ciclos de carga y descarga, según IBM
+     * (IBM Documentation, "Data cartridges"): 20.000 para Ultrium 3 a 8
+     * y 100.000 para Ultrium 9. El contador de LTOTRACE solo incluye los
+     * montajes realizados desde el sistema.
+     */
+    public static final int CICLOS_NOMINALES_LTO = 20_000;
+    public static final int CICLOS_NOMINALES_LTO9 = 100_000;
+    /** Porcentaje de la vida nominal desde el que se emite la advertencia. */
+    public static final int PORCENTAJE_ADVERTENCIA = 70;
+
+    /** Ciclos nominales según la generación (LTO-9: 100.000; el resto: 20.000). */
+    public static int ciclosNominales(String tecnologia) {
+        if (tecnologia != null && tecnologia.replaceAll("[^0-9]", "").equals("9")) {
+            return CICLOS_NOMINALES_LTO9;
+        }
+        return CICLOS_NOMINALES_LTO;
+    }
+
+    /** Porcentaje de uso sobre la vida nominal, truncado y limitado a 100. */
+    public static int porcentajeUso(int usos, String tecnologia) {
+        long p = (long) Math.max(usos, 0) * 100L / ciclosNominales(tecnologia);
+        return (int) Math.min(p, 100L);
+    }
+
+    /** Nivel de uso para filtros y alertas: SALUDABLE, ADVERTENCIA o REEMPLAZAR. */
+    public static String nivelUso(int usos, String tecnologia) {
+        int p = porcentajeUso(usos, tecnologia);
+        if (p >= 100) return "REEMPLAZAR";
+        if (p >= PORCENTAJE_ADVERTENCIA) return "ADVERTENCIA";
+        return "SALUDABLE";
+    }
 
     // Las longitudes coinciden con el script SQL y el diccionario de datos
     @Id
@@ -82,17 +112,16 @@ public class Cinta {
 
     // ---- Desgaste ----
     public int getPorcentajeDesgaste() {
-        int p = (int) Math.round(contadorUsos * 100.0 / VIDA_UTIL_MONTAJES);
-        return Math.min(p, 100);
+        return porcentajeUso(contadorUsos, tecnologia);
     }
     public String getColorDesgaste() {
         int p = getPorcentajeDesgaste();
         if (p >= 100) return "bg-danger";
-        if (p >= 70) return "bg-warning";
+        if (p >= PORCENTAJE_ADVERTENCIA) return "bg-warning";
         return "bg-success";
     }
     public String getTextoDesgaste() {
-        String base = "Usos: " + contadorUsos + " / " + VIDA_UTIL_MONTAJES;
+        String base = "Usos: " + contadorUsos + " / " + ciclosNominales(tecnologia);
         if (getPorcentajeDesgaste() >= 100) base += " · Reemplazar";
         return base;
     }

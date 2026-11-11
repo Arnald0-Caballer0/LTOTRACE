@@ -101,6 +101,16 @@ public class CintaDAO {
             conn = DatabaseConnection.getConnection();
             conn.setAutoCommit(false);
 
+            // Ubicación registrada antes del montaje (bloquea la fila hasta el commit)
+            String ubicacionPrevia = null;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT ubicacion FROM cintas WHERE barcode = ? FOR UPDATE")) {
+                ps.setString(1, barcode);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) ubicacionPrevia = rs.getString("ubicacion");
+                }
+            }
+
             int filas;
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, barcode);
@@ -108,7 +118,24 @@ public class CintaDAO {
             }
 
             if (filas > 0) {
-                registrarMovimiento(conn, barcode, "MONTAJE", "Cinta montada en el drive (uso registrado)", null);
+                String observacion = "Cinta montada en el drive (uso registrado)";
+                if ("RETIRADO".equals(ubicacionPrevia)) {
+                    // Una cinta retirada no debería estar en la librería: no se corrige sola, se deja constancia
+                    observacion += ". ATENCIÓN: la cinta figura como RETIRADO";
+                }
+                registrarMovimiento(conn, barcode, "MONTAJE", observacion, null);
+
+                // Si la cinta pudo montarse, está físicamente en la librería:
+                // se corrige la ubicación cuando el sistema la tenía en el armario.
+                if ("ARMARIO".equals(ubicacionPrevia)) {
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "UPDATE cintas SET ubicacion = 'LIBRERIA', ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode = ?")) {
+                        ps.setString(1, barcode);
+                        ps.executeUpdate();
+                    }
+                    registrarMovimiento(conn, barcode, "CAMBIO_UBICACION",
+                            "Ubicación actualizada automáticamente de ARMARIO a LIBRERIA al montar la cinta", null);
+                }
                 conn.commit();
                 System.out.println("Montaje registrado para " + barcode);
             } else {
@@ -504,8 +531,9 @@ public class CintaDAO {
         retirarCintas(barcodes, null);
     }
 
-    public void retirarCintas(List<String> barcodes, String comprobanteBase64) {
-        if (barcodes == null || barcodes.isEmpty()) return;
+    /** @return true si el retiro y sus movimientos se confirmaron; false si se revirtió. */
+    public boolean retirarCintas(List<String> barcodes, String comprobanteBase64) {
+        if (barcodes == null || barcodes.isEmpty()) return false;
 
         StringBuilder sql = new StringBuilder(
                 "UPDATE cintas SET ubicacion = 'RETIRADO', ultima_modificacion = CURRENT_TIMESTAMP WHERE barcode IN (");
@@ -533,11 +561,18 @@ public class CintaDAO {
                 registrarMovimiento(conn, barcode, "RETIRO", "Cinta retirada del inventario", comprobanteBase64);
             }
 
+            if (filasAfectadas != barcodes.size()) {
+                // Alguna cinta no existe: no se retira ninguna
+                rollback(conn);
+                return false;
+            }
             conn.commit();
             System.out.println("Éxito: Se han retirado " + filasAfectadas + " cintas en la base de datos.");
+            return true;
         } catch (SQLException e) {
             rollback(conn);
             System.err.println("Error al procesar el retiro masivo: " + e.getMessage());
+            return false;
         } finally {
             cerrar(conn);
         }
@@ -667,6 +702,7 @@ public class CintaDAO {
                 m.put("estado", rs.getString("estado"));
                 m.put("cliente", rs.getString("cliente"));
                 m.put("usos", rs.getInt("contador_usos"));
+                m.put("nivelUso", Cinta.nivelUso(rs.getInt("contador_usos"), rs.getString("tecnologia")));
                 m.put("esSemanal", rs.getBoolean("es_semanal"));
                 m.put("diaSemana", rs.getString("dia_semana"));
                 java.sql.Timestamp fpu = rs.getTimestamp("fecha_primer_uso");

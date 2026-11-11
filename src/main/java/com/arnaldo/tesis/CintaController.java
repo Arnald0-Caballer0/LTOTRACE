@@ -50,6 +50,8 @@ public class CintaController {
 
         //consultamos información en la librería
         model.addAttribute("cintaEnDrive", libraryService.consultarCintaEnDrive1());
+        String driveCfg = cfg.get("ts4300.drive");
+        model.addAttribute("driveConfigurado", (driveCfg == null || driveCfg.isBlank()) ? "3" : driveCfg.trim());
         //consultamos si el robot está trabajando
         model.addAttribute("estadoRobot", libraryService.obtenerEstadoRobot());
         model.addAttribute("puedeMover", permisoService.puedeMover(session));
