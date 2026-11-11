@@ -150,8 +150,8 @@ public class CintaController {
         return r;
     }
 
-    // Modifica tu método de marcar para que reciba el día
-    @GetMapping("/marcar-semanal/{id}")
+    // Asigna una cinta a un día del panel semanal (POST: protegido con token CSRF)
+    @PostMapping("/marcar-semanal/{id}")
     public String marcarSemanal(@PathVariable("id") String barcode,
                                 @RequestParam(value = "dia", required = false) String dia,
                                 @RequestParam(value = "clienteId", required = false) Integer clienteId,
@@ -161,7 +161,8 @@ public class CintaController {
         return "redirect:/" + construirParametros(clienteId, tecnologia);
     }
 
-    @GetMapping("/desmarcar-semanal/{id}")
+    // Quita la cinta del panel semanal (POST: protegido con token CSRF)
+    @PostMapping("/desmarcar-semanal/{id}")
     public String desmarcarSemanal(@PathVariable("id") String barcode,
                                    @RequestParam(value = "clienteId", required = false) Integer clienteId,
                                    @RequestParam(value = "tecnologia", required = false) String tecnologia) {

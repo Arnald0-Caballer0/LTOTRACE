@@ -211,7 +211,17 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', alCargar); else alCargar();
 
-  window.LTO = { toast: toast, confirm: confirmar };
+  /* Envía una acción por POST (con el token CSRF) y navega a la respuesta, como un formulario */
+  function enviarPost(url) {
+    var f = document.createElement('form');
+    f.method = 'post'; f.action = url; f.style.display = 'none';
+    var c = datosCsrf();
+    if (c) { var i = document.createElement('input'); i.type = 'hidden'; i.name = c.param; i.value = c.token; f.appendChild(i); }
+    document.body.appendChild(f);
+    f.submit();
+  }
+
+  window.LTO = { toast: toast, confirm: confirmar, post: enviarPost };
   /* Red de seguridad: cualquier alert() que quede se muestra con el estilo del sistema */
   window.alert = function (m) { toast(m, /error|no se pudo|fall/i.test(m) ? 'error' : 'info'); };
 })();

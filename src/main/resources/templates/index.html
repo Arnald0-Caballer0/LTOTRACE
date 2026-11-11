@@ -477,7 +477,7 @@
                     col.innerHTML = `
                         <div class="card h-100 shadow-sm tape-card border-0 border-${cintaDelDia.tecnologia}">
                             <div class="card-body card-body-compact position-relative">
-                                <a href="/desmarcar-semanal/${cintaDelDia.barcode}?clienteId=${clienteSeleccionado || ''}&tecnologia=${tecnologiaSeleccionada || ''}"
+                                <a href="#" onclick="LTO.post('/desmarcar-semanal/${cintaDelDia.barcode}?clienteId=${clienteSeleccionado || ''}&tecnologia=${tecnologiaSeleccionada || ''}'); return false;"
                                    class="btn-remove-weekly text-danger" title="Quitar">
                                     <i class="bi bi-x-circle-fill"></i>
                                 </a>
@@ -530,7 +530,7 @@
                 const barcode = selectCintaModal.value;
                 if(barcode !== '') {
                     // ENVIAMOS EL DÍA COMO PARÁMETRO EN LA URL
-                    window.location.href = `/marcar-semanal/${barcode}?dia=${diaSeleccionadoGlobal}&clienteId=${clienteSeleccionado || ''}&tecnologia=${tecnologiaSeleccionada || ''}`;
+                    LTO.post(`/marcar-semanal/${barcode}?dia=${diaSeleccionadoGlobal}&clienteId=${clienteSeleccionado || ''}&tecnologia=${tecnologiaSeleccionada || ''}`);
                 } else {
                     LTO.toast('Seleccioná una cinta de la lista.', 'warning');
                 }
